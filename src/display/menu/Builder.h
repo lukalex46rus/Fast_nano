@@ -1,0 +1,1909 @@
+#pragma once
+#include "../../core/Features.h"
+#if F_USE_MENU
+
+#include "../../string/StringBuilder.h"
+#include <stdlib.h>
+
+#include "Menu.h"
+
+#ifndef MENU_MIN_YEAR
+#define MENU_MIN_YEAR 2000
+#endif
+
+#define MENU_INT_BUFFER 22
+#define MENU_FLT_BUFFER 18
+#define MENU_NEXT __COUNTER__
+
+namespace fn {
+namespace disp {
+namespace menu {
+
+template <typename T>
+struct _typeIdentity {
+    typedef T type;
+};
+
+// MARK: Alphabet
+static const char _gmInputAlphabet[] MENU_PROGMEM =
+    "0123456789"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+
+// MARK: time
+struct Time {
+    uint8_t second;
+    uint8_t minute;
+    uint8_t hour;
+};
+
+struct Date {
+    uint8_t day;
+    uint8_t month;
+    uint16_t year;
+};
+
+#ifndef MENU_NO_POPUP
+static constexpr int8_t PopupNone = -1;
+#endif
+
+// MARK: builder
+class Builder {
+   public:
+    typedef void (*BuildCallback)(menu::Builder&);
+
+    enum class Action : uint8_t {
+        None,
+        Refresh,
+        Set,
+        SetDown,
+        SetUp,
+        Left,
+        Right,
+    };
+
+    // =================== CTR ===================
+    // создать билдер для указанного меню
+    Builder(Menu& menu) : menu(menu) {}
+
+    // выполнить полный проход обновления экрана
+    void buildRefresh(BuildCallback cb) {
+        buildRow(cb, UINT8_MAX);
+        if (isRefresh()) buildRow(cb, UINT8_MAX);
+        if (isRefresh()) buildRow(cb, UINT8_MAX);
+        menu.endRender();
+    }
+
+    // выполнить проход для отрисовки одной строки, UINT8_MAX для всех видимых
+    void buildRow(BuildCallback cb, uint8_t targetRow) {
+        menu.resetPart();
+        _init();
+        _action = Action::Refresh;
+        _targetRow = targetRow;
+        _build(cb);
+        if (targetRow == UINT8_MAX
+#ifndef MENU_NO_POPUP
+            && !_popupPass
+#endif
+        ) menu.clearBottom();
+    }
+
+    // найти и обновить виджет, связанный с переменной
+    void buildUpdate(BuildCallback cb, const void* targetVar) {
+        menu.resetPart();
+        _init();
+        _action = Action::Refresh;
+        _targetVar = targetVar;
+        _build(cb);
+        if (_refresh) menu.endRender();
+    }
+
+    // выполнить проход обработки действия
+    void buildAction(BuildCallback cb, Action action, bool skipRender) {
+        _init();
+        _action = action;
+        _refresh = skipRender;
+        _build(cb);
+    }
+
+#ifndef MENU_NO_POPUP
+    // =================== POPUP ===================
+    // MARK: popup
+#ifdef ARDUINO
+    bool Alert(uint8_t id, const __FlashStringHelper* title) {
+        MENU_READ_PGM(title, title_s);
+        return Alert(id, title_s);
+    }
+
+    bool Alert(uint8_t id, const __FlashStringHelper* title, void (*cb)()) {
+        MENU_READ_PGM(title, title_s);
+        return Alert(id, title_s, cb);
+    }
+
+    bool Alert(uint8_t id, const __FlashStringHelper* title, const __FlashStringHelper* button, void (*cb)() = nullptr) {
+        MENU_READ_PGM(title, title_s);
+        MENU_READ_PGM(button, button_s);
+        return Alert(id, title_s, button_s, cb);
+    }
+
+    bool Alert(uint8_t id, const String& title) {
+        return Alert(id, title.c_str());
+    }
+
+    bool Alert(uint8_t id, const String& title, void (*cb)()) {
+        return Alert(id, title.c_str(), cb);
+    }
+
+    bool Alert(uint8_t id, const String& title, const String& button, void (*cb)() = nullptr) {
+        return Alert(id, title.c_str(), button.c_str(), cb);
+    }
+
+    int8_t Confirm(uint8_t id, const __FlashStringHelper* title, const __FlashStringHelper* first, const __FlashStringHelper* second, void (*cb)(bool result) = nullptr) {
+        MENU_READ_PGM(title, title_s);
+        MENU_READ_PGM(first, first_s);
+        MENU_READ_PGM(second, second_s);
+        return Confirm(id, title_s, first_s, second_s, cb);
+    }
+
+    int8_t Confirm(uint8_t id, const String& title, const String& first, const String& second, void (*cb)(bool result) = nullptr) {
+        return Confirm(id, title.c_str(), first.c_str(), second.c_str(), cb);
+    }
+#endif
+
+    // окно с одной кнопкой. true возвращается один раз при подтверждении
+    bool Alert(uint8_t id, const char* title, const char* button = "OK", void (*cb)() = nullptr) {
+        bool result = _popup(id, title, button, nullptr) >= 0;
+        if (result && cb) cb();
+        return result;
+    }
+
+    bool Alert(uint8_t id, const char* title, void (*cb)()) {
+        return Alert(id, title, "OK", cb);
+    }
+
+    // окно с двумя кнопками. -1 нет выбора, 0/1 - выбранная кнопка
+    int8_t Confirm(uint8_t id, const char* title, const char* first, const char* second, void (*cb)(bool result) = nullptr) {
+        int8_t result = _popup(id, title, first, second);
+        if (result >= 0 && cb) cb(result);
+        return result;
+    }
+#endif
+
+#ifndef MENU_NO_PAGES
+// =================== PAGE ===================
+// MARK: page
+#ifdef ARDUINO
+    bool PageBegin(const __FlashStringHelper* label) {
+        MENU_READ_PGM(label, label_s);
+        return PageBegin(label_s);
+    }
+
+    bool PageBegin(uint8_t id, const __FlashStringHelper* label) {
+        MENU_READ_PGM(label, label_s);
+        return PageBegin(id, label_s);
+    }
+
+    bool PageBegin(const String& label) {
+        return PageBegin(label.c_str());
+    }
+
+    bool PageBegin(uint8_t id, const String& label) {
+        return PageBegin(id, label.c_str());
+    }
+
+#endif
+    // начать страницу (подменю) с автоматическим id
+    bool PageBegin(const char* label) {
+        return PageBegin(nextId(), label);
+    }
+
+    // начать страницу (подменю)
+    bool PageBegin(uint8_t id, const char* label) {
+        if (registerWidget()) {
+            if (!_reachable()) return false;
+
+            switch (getAction()) {
+                case Action::Refresh:
+                    if (beginRender()) {
+                        menu.print(label);
+                        menu.padEnd(1);
+                        menu.print(menu.marker);
+                    }
+                    break;
+
+                case Action::Set:
+                case Action::Right:
+                    openPage(id);
+                    break;
+
+                default: break;
+            }
+            return false;
+        }
+        return menu.pages.enter(id);
+    }
+
+    // закончить страницу (вызывать внутри условия по PageBegin). back - выводить кнопку "назад"
+    void PageEnd(bool back = true) {
+        if (back && registerWidget() && _reachable()) {
+            switch (getAction()) {
+                case Action::Refresh:
+                    if (beginRender()) {
+                        menu.print(menu.backSign);
+                        menu.padEnd();
+                    }
+                    break;
+
+                case Action::Set:
+                case Action::Left:
+                    closePage();
+                    break;
+
+                default: break;
+            }
+        }
+        if (menu.pages.target) _achieved = true;
+        menu.pages.leave();
+    }
+
+#ifdef ARDUINO
+    template <typename PageCb>
+    void Page(const __FlashStringHelper* label, const PageCb& page, bool back = true) {
+        MENU_READ_PGM(label, label_s);
+        Page(label_s, page, back);
+    }
+
+    template <typename PageCb>
+    void Page(uint8_t id, const __FlashStringHelper* label, const PageCb& page, bool back = true) {
+        MENU_READ_PGM(label, label_s);
+        Page(id, label_s, page, back);
+    }
+
+    template <typename PageCb>
+    void Page(const String& label, const PageCb& page, bool back = true) {
+        Page(label.c_str(), page, back);
+    }
+
+    template <typename PageCb>
+    void Page(uint8_t id, const String& label, const PageCb& page, bool back = true) {
+        Page(id, label.c_str(), page, back);
+    }
+#endif
+    // Захват внешних переменных для лямбда-функции элемента Page
+    template <typename PageCb>
+    void Page(const char* label, const PageCb& page, bool back = true) {
+        Page(nextId(), label, page, back);
+    }
+
+    template <typename PageCb>
+    void Page(uint8_t id, const char* label, const PageCb& page, bool back = true) {
+        if (PageBegin(id, label)) {
+            page(*this);
+            PageEnd(back);
+        }
+    }
+
+    // =================== SELECT PAGE ===================
+    // MARK: select page
+#ifdef ARDUINO
+    bool SelectList(const __FlashStringHelper* label, uint8_t* var, const __FlashStringHelper* opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        MENU_READ_PGM(opts, opts_s);
+        return SelectList(label_s, var, opts_s, cb);
+    }
+
+    bool SelectList(const String& label, uint8_t* var, const String& opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        return SelectList(label.c_str(), var, opts.c_str(), cb);
+    }
+
+#endif
+
+    bool SelectList(const char* label, uint8_t* var, const char* opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        uint8_t id = nextId();
+        if (registerWidget()) {
+            if (!_reachable()) return false;
+
+            switch (getAction()) {
+                case Action::Refresh: {
+                    const char* str = "";
+                    uint8_t len = 0;
+                    uint8_t count = menuutil::countSub(opts, ';');
+                    if (*var < count) len = menuutil::getSub(opts, ';', *var, &str);
+
+                    if (beginRender(var, label)) {
+                        uint8_t letters;
+                        menuutil::strlenU(str, &letters, len);
+                        uint8_t width = letters == UINT8_MAX ? UINT8_MAX : letters + 1;
+                        if (prepareRight(width)) {
+                            menu.print(str, len, letters);
+                            menu.print(menu.marker);
+                        }
+                    }
+                } break;
+
+                case Action::Set:
+                case Action::Right: {
+                    uint8_t count = menuutil::countSub(opts, ';');
+                    openPage(id, *var < count ? *var : 0);
+                } break;
+
+                default: break;
+            }
+            return false;
+        }
+
+        if (!menu.pages.enter(id)) return false;
+
+        bool selected = false;
+        uint8_t count = menuutil::countSub(opts, ';');
+        for (uint8_t i = 0; i < count; ++i) {
+            const char* str;
+            uint8_t len = menuutil::getSub(opts, ';', i, &str);
+            if (!beginWidget()) continue;
+
+            switch (getAction()) {
+                case Action::Refresh:
+                    if (beginRender()) {
+                        uint8_t letters;
+                        menuutil::strlenU(str, &letters, len);
+                        // if (prepareRight(letters)) menu.print(str, len, letters);  // right
+                        menu.print(str, len, letters);  // left
+                        menu.padEnd();                  // left
+                    }
+                    break;
+
+                case Action::Set:
+                case Action::Right:
+                    *var = i;
+                    selected = true;
+                    change();
+                    if (cb) cb(i, str, len);
+                    closePage();
+                    break;
+
+                case Action::Left:
+                    closePage();
+                    break;
+
+                default: break;
+            }
+
+            if (isRefresh()) break;
+        }
+
+        if (menu.pages.target) _achieved = true;
+        menu.pages.leave();
+        return selected;
+    }
+
+    // =================== SELECT PAGE EX ===================
+    // MARK: select page ex
+#ifdef ARDUINO
+    bool SelectListEx(const __FlashStringHelper* label, uint8_t* var, const __FlashStringHelper* opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        MENU_READ_PGM(opts, opts_s);
+        return SelectListEx(label_s, var, opts_s, cb);
+    }
+
+    bool SelectListEx(const String& label, uint8_t* var, const String& opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        return SelectListEx(label.c_str(), var, opts.c_str(), cb);
+    }
+#endif
+
+    bool SelectListEx(const char* label, uint8_t* var, const char* opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        uint8_t id = nextId();
+        if (registerWidget()) {
+            if (!_reachable()) return false;
+
+            switch (getAction()) {
+                case Action::Refresh: {
+                    const char* str = "<";
+                    uint8_t len = 1;
+                    uint8_t count = menuutil::countSub(opts, ';');
+                    if (*var < count) {
+                        const char* current;
+                        uint8_t currentLen = menuutil::getSub(opts, ';', *var, &current);
+                        if (currentLen && *current != '~') {
+                            str = current;
+                            len = currentLen;
+                        }
+                    }
+
+                    if (beginRender(var, label)) {
+                        uint8_t letters;
+                        menuutil::strlenU(str, &letters, len);
+                        uint8_t width = letters == UINT8_MAX ? UINT8_MAX : letters + 1;
+                        if (prepareRight(width)) {
+                            menu.print(str, len, letters);
+                            menu.print(menu.marker);
+                        }
+                    }
+                } break;
+
+                case Action::Set:
+                case Action::Right: {
+                    uint8_t count = menuutil::countSub(opts, ';');
+                    uint8_t visible = 0;
+                    uint8_t chosen = 0;
+                    bool found = false;
+
+                    for (uint8_t i = 0; i < count; ++i) {
+                        const char* str;
+                        uint8_t len = menuutil::getSub(opts, ';', i, &str);
+                        if (len && *str == '~') continue;
+                        if (i == *var) {
+                            chosen = visible;
+                            found = true;
+                        }
+                        ++visible;
+                    }
+
+                    if (visible) openPage(id, found ? chosen : 0);
+                } break;
+
+                default: break;
+            }
+            return false;
+        }
+
+        if (!menu.pages.enter(id)) return false;
+
+        bool selected = false;
+        uint8_t count = menuutil::countSub(opts, ';');
+        for (uint8_t i = 0; i < count; ++i) {
+            const char* str;
+            uint8_t len = menuutil::getSub(opts, ';', i, &str);
+            if (len && *str == '~') continue;
+            if (!beginWidget()) continue;
+
+            switch (getAction()) {
+                case Action::Refresh:
+                    if (beginRender()) {
+                        uint8_t letters;
+                        menuutil::strlenU(str, &letters, len);
+                        // if (prepareRight(letters)) menu.print(str, len, letters);  // right
+                        menu.print(str, len, letters);  // left
+                        menu.padEnd();                  // left
+                    }
+                    break;
+
+                case Action::Set:
+                case Action::Right:
+                    *var = i;
+                    selected = true;
+                    change();
+                    if (cb) cb(i, str, len);
+                    closePage();
+                    break;
+
+                case Action::Left:
+                    closePage();
+                    break;
+
+                default: break;
+            }
+
+            if (isRefresh()) break;
+        }
+
+        if (menu.pages.target) _achieved = true;
+        menu.pages.leave();
+        return selected;
+    }
+#endif
+
+    // =================== BUTTON ===================
+    // MARK: button
+#ifdef ARDUINO
+    bool Button(const __FlashStringHelper* label, void (*cb)() = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        return Button(label_s, cb);
+    }
+
+    bool Button(const String& label, void (*cb)() = nullptr) {
+        return Button(label.c_str(), cb);
+    }
+#endif
+
+    bool Button(const char* label, void (*cb)() = nullptr) {
+        if (!beginWidget()) return false;
+
+        switch (getAction()) {
+            case Action::Refresh:
+                if (beginRender()) {
+                    menu.print(label);
+                    menu.padEnd();
+                }
+                break;
+
+            case Action::Set:
+            case Action::Right:
+                if (cb) cb();
+                return true;
+
+            default: break;
+        }
+
+        return false;
+    }
+
+    // =================== LABEL ===================
+    // MARK: label
+#ifdef ARDUINO
+    void Label(const __FlashStringHelper* line) {
+        MENU_READ_PGM(line, line_s);
+        Label(line_s);
+    }
+
+    void Label(const String& line) {
+        Label(line.c_str());
+    }
+#endif
+
+    void Label(const char* line) {
+        if (beginWidget() && getAction() == Action::Refresh && beginRender()) {
+            menu.print(line);
+            menu.padEnd();
+        }
+    }
+
+    // =================== VALUE STR ===================
+    // MARK: value
+#ifdef ARDUINO
+    void ValueText(const __FlashStringHelper* label, const char* value) {
+        MENU_READ_PGM(label, label_s);
+        ValueText(label_s, value);
+    }
+
+    void ValueText(const String& label, const char* value) {
+        ValueText(label.c_str(), value);
+    }
+#endif
+
+    void ValueText(const char* label, const char* var) {
+        if (beginWidget() && getAction() == Action::Refresh && beginRender(var, label)) {
+            uint8_t letters;
+            menuutil::strlenU(var, &letters);
+            if (prepareRight(letters)) menu.print(var);
+        }
+    }
+
+    // =================== VALUE INT ===================
+#ifdef ARDUINO
+    template <typename T>
+    void ValueInt(const __FlashStringHelper* label, const T* var, uint8_t base, const __FlashStringHelper* unit) {
+        MENU_READ_PGM(label, label_s);
+        MENU_READ_PGM(unit, unit_s);
+        ValueInt(label_s, var, base, unit_s);
+    }
+
+    template <typename T>
+    void ValueInt(const String& label, const T* var, uint8_t base, const String& unit) {
+        ValueInt(label.c_str(), var, base, unit.c_str());
+    }
+#endif
+
+    template <typename T>
+    void ValueInt(const char* label, const T* var, uint8_t base = 10, const char* unit = "") {
+        if (beginWidget() && getAction() == Action::Refresh && beginRender(var, label)) _printVar(var, base, unit);
+    }
+
+// =================== VALUE FLOAT ===================
+#ifdef ARDUINO
+    void ValueFloat(const __FlashStringHelper* label, const float* var, uint8_t dec, const __FlashStringHelper* unit) {
+        MENU_READ_PGM(label, label_s);
+        MENU_READ_PGM(unit, unit_s);
+        ValueFloat(label_s, var, dec, unit_s);
+    }
+
+    void ValueFloat(const String& label, const float* var, uint8_t dec, const String& unit) {
+        ValueFloat(label.c_str(), var, dec, unit.c_str());
+    }
+#endif
+
+    void ValueFloat(const char* label, const float* var, uint8_t dec = 2, const char* unit = "") {
+        if (beginWidget() && getAction() == Action::Refresh && beginRender(var, label)) _printVar(var, dec, unit);
+    }
+
+    // =================== VALUE NUMBER ===================
+#ifdef ARDUINO
+    template <typename T>
+    void ValueNumber(const __FlashStringHelper* label, const T* var, uint8_t base, const __FlashStringHelper* unit) {
+        ValueInt(label, var, base, unit);
+    }
+
+    void ValueNumber(const __FlashStringHelper* label, const float* var, uint8_t dec, const __FlashStringHelper* unit) {
+        ValueFloat(label, var, dec, unit);
+    }
+
+    template <typename T>
+    void ValueNumber(const String& label, const T* var, uint8_t base, const String& unit) {
+        ValueInt(label, var, base, unit);
+    }
+
+    void ValueNumber(const String& label, const float* var, uint8_t dec, const String& unit) {
+        ValueFloat(label, var, dec, unit);
+    }
+#endif
+
+    template <typename T>
+    void ValueNumber(const char* label, const T* var, uint8_t base = 10, const char* unit = "") {
+        ValueInt(label, var, base, unit);
+    }
+
+    void ValueNumber(const char* label, const float* var, uint8_t dec = 2, const char* unit = "") {
+        ValueFloat(label, var, dec, unit);
+    }
+
+// =================== SWITCH ===================
+// MARK: switch
+#ifdef ARDUINO
+    bool Switch(const __FlashStringHelper* label, bool* var, void (*cb)(bool v) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        return Switch(label_s, var, cb);
+    }
+
+    bool Switch(const String& label, bool* var, void (*cb)(bool v) = nullptr) {
+        return Switch(label.c_str(), var, cb);
+    }
+#endif
+
+    bool Switch(const char* label, bool* var, void (*cb)(bool v) = nullptr) {
+        if (!beginWidget()) return false;
+        bool changed = false;
+        bool render = false;
+
+        switch (getAction()) {
+            case Action::Refresh:
+                render = true;
+                break;
+
+            case Action::Set:
+                *var = !*var;
+                render = changed = true;
+                change();
+                break;
+
+            case Action::SetUp:
+            case Action::Right:
+                if (!*var) {
+                    *var = true;
+                    render = changed = true;
+                    change();
+                }
+                break;
+
+            case Action::SetDown:
+            case Action::Left:
+                if (*var) {
+                    *var = false;
+                    render = changed = true;
+                    change();
+                }
+                break;
+
+            default: break;
+        }
+
+        if (changed && cb) cb(*var);
+
+        if (render && beginRender(var, label) && prepareRight(3)) {
+            menu.print(*var ? "[x]" : "[ ]", 3);
+        }
+
+        return changed;
+    }
+
+// =================== SELECT ===================
+// MARK: select
+#ifdef ARDUINO
+    bool Select(const __FlashStringHelper* label, uint8_t* var, const __FlashStringHelper* opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        MENU_READ_PGM(opts, opts_s);
+        return Select(label_s, var, opts_s, cb);
+    }
+
+    bool Select(const String& label, uint8_t* var, const String& opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        return Select(label.c_str(), var, opts.c_str(), cb);
+    }
+#endif
+
+    bool Select(const char* label, uint8_t* var, const char* opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        if (!beginWidget()) return false;
+        bool changed = false;
+        bool render = false;
+
+        switch (getAction()) {
+            case Action::Refresh:
+                render = true;
+                break;
+
+            case Action::Set:
+                menu.toggle();
+                render = true;
+                break;
+
+            case Action::SetUp:
+            case Action::Right:
+                if (*var < menuutil::countSub(opts, ';') - 1) {
+                    ++*var;
+                    render = changed = true;
+                    change();
+                }
+                break;
+
+            case Action::SetDown:
+            case Action::Left:
+                if (*var) {
+                    --*var;
+                    render = changed = true;
+                    change();
+                }
+                break;
+
+            default: break;
+        }
+
+        const char* start = nullptr;
+        uint8_t len = 0;
+        if (changed || render) len = menuutil::getSub(opts, ';', *var, &start);
+
+        if (changed && cb) cb(*var, start, len);
+
+        if (render && beginRender(var, label)) {
+            uint8_t letters;
+            menuutil::strlenU(start, &letters, len);
+
+            if (prepareRight(letters + 2)) {
+                menu.print('<');
+                menu.print(start, len, letters);
+                menu.print(menu.marker);
+            }
+        }
+
+        return changed;
+    }
+
+// MARK: select ex
+#ifdef ARDUINO
+    bool SelectEx(const __FlashStringHelper* label, uint8_t* var, const __FlashStringHelper* opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        MENU_READ_PGM(opts, opts_s);
+        return SelectEx(label_s, var, opts_s, cb);
+    }
+
+    bool SelectEx(const String& label, uint8_t* var, const String& opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        return SelectEx(label.c_str(), var, opts.c_str(), cb);
+    }
+#endif
+
+    bool SelectEx(const char* label, uint8_t* var, const char* opts, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        if (!beginWidget()) return false;
+        bool changed = false;
+        bool render = false;
+
+        switch (getAction()) {
+            case Action::Refresh:
+                render = true;
+                break;
+
+            case Action::Set:
+                menu.toggle();
+                render = true;
+                break;
+
+            case Action::SetUp:
+            case Action::Right:
+            case Action::SetDown:
+            case Action::Left: {
+                uint8_t next;
+                bool forward = _action == Action::SetUp || _action == Action::Right;
+                if (_selectFind(opts, *var, forward, next)) {
+                    *var = next;
+                    render = changed = true;
+                    change();
+                }
+            } break;
+
+            default: break;
+        }
+
+        const char* start = "";
+        uint8_t len = 0;
+        if (changed || render) {
+            len = menuutil::getSub(opts, ';', *var, &start);
+            if (len && *start == '~') {
+                start = "";
+                len = 0;
+            }
+        }
+
+        if (changed && cb) cb(*var, start, len);
+
+        if (render && beginRender(var, label)) {
+            uint8_t letters;
+            menuutil::strlenU(start, &letters, len);
+
+            if (prepareRight(letters + 2)) {
+                menu.print('<');
+                menu.print(start, len, letters);
+                menu.print(menu.marker);
+            }
+        }
+
+        return changed;
+    }
+
+// =================== TABS ===================
+// MARK: tabs
+#ifdef ARDUINO
+    bool Tabs(uint8_t* var, const __FlashStringHelper* tabs, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        MENU_READ_PGM(tabs, tabs_s);
+        return Tabs(var, tabs_s, cb);
+    }
+
+    bool Tabs(uint8_t* var, const String& tabs, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        return Tabs(var, tabs.c_str(), cb);
+    }
+#endif
+
+    bool Tabs(uint8_t* var, const char* tabs, void (*cb)(uint8_t n, const char* str, uint8_t len) = nullptr) {
+        if (!beginWidget()) return false;
+        bool changed = false;
+        bool render = false;
+
+        switch (getAction()) {
+            case Action::Refresh:
+                render = true;
+                break;
+
+            case Action::Set:
+                menu.toggle();
+                render = true;
+                break;
+
+            case Action::SetUp:
+            case Action::Right:
+                if (*var < menuutil::countSub(tabs, ';') - 1) {
+                    ++*var;
+                    render = changed = true;
+                    change();
+                }
+                break;
+
+            case Action::SetDown:
+            case Action::Left:
+                if (*var) {
+                    --*var;
+                    render = changed = true;
+                    change();
+                }
+                break;
+
+            default: break;
+        }
+
+        const char* start = nullptr;
+        uint8_t slen = 0;
+        if (changed || render) slen = menuutil::getSub(tabs, ';', *var, &start);
+
+        if (changed && cb) cb(*var, start, slen);
+
+        if (render && beginRender(var)) {
+            int16_t start_i = (menu.left / 2) - ((start - tabs) + slen / 2);
+            int16_t len = strlen(tabs);
+            int16_t i = 0;
+            while (menu.left) {
+                if (i >= start_i && i <= start_i + len) {
+                    const char* t = tabs + i - start_i;
+                    if (t == start) menu.print(menu.isActive() ? '<' : '[');
+                    else if (t == start + slen) menu.print(menu.isActive() ? '>' : ']');
+                    menu.print((!*t || *t == ';') ? ' ' : *t);
+                } else {
+                    menu.print(' ');
+                }
+                i++;
+            }
+        }
+
+        return changed;
+    }
+
+    // =================== TIME ===================
+    // MARK: time
+
+#ifdef ARDUINO
+    template <typename T>
+    bool Time(const __FlashStringHelper* label, T* var, void (*cb)(T v) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        return Time(label_s, var, cb);
+    }
+
+    template <typename T>
+    bool Time(const String& label, T* var, void (*cb)(T v) = nullptr) {
+        return Time(label.c_str(), var, cb);
+    }
+#endif
+
+    template <typename T>
+    bool Time(const char* label, T* var, void (*cb)(T v) = nullptr) {
+        if (!beginWidget()) return false;
+
+        bool changed = false;
+        int8_t dir = 0;
+        int8_t curdir = 0;
+
+        _editDir(dir, curdir);
+        _moveActive(curdir, 3);
+
+        if (dir && menu.active) {
+            switch (menu.active) {
+                case 1: var->hour = _clampRing((int)var->hour + dir, 0, 23); break;
+                case 2: var->minute = _clampRing((int)var->minute + dir, 0, 59); break;
+                case 3: var->second = _clampRing((int)var->second + dir, 0, 59); break;
+            }
+
+            changed = true;
+            change();
+            if (cb) cb(*var);
+        }
+
+        if (beginRender(var, label) && prepareRight(9)) {
+            bool act = menu.isActive();
+            menu.print(act && menu.active == 1 ? menu.marker : ' ');
+            menu.printDec2z(var->hour);
+            menu.print(act && menu.active == 2 ? menu.marker : ':');
+            menu.printDec2z(var->minute);
+            menu.print(act && menu.active == 3 ? menu.marker : ':');
+            menu.printDec2z(var->second);
+        }
+
+        return changed;
+    }
+
+    // =================== DATE ===================
+    // MARK: date
+
+#ifdef ARDUINO
+    template <typename D>
+    bool Date(const __FlashStringHelper* label, D* var, void (*cb)(D v) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        return Date(label_s, var, cb);
+    }
+
+    template <typename D>
+    bool Date(const String& label, D* var, void (*cb)(D v) = nullptr) {
+        return Date(label.c_str(), var, cb);
+    }
+#endif
+
+    template <typename D>
+    bool Date(const char* label, D* var, void (*cb)(D v) = nullptr) {
+        if (!beginWidget()) return false;
+
+        bool changed = false;
+        int8_t dir = 0;
+        int8_t curdir = 0;
+
+        _editDir(dir, curdir);
+        _moveActive(curdir, 3);
+
+        if (dir && menu.active) {
+            switch (menu.active) {
+                case 1: var->day = _clampRing((int)var->day + dir, 1, 31); break;
+                case 2: var->month = _clampRing((int)var->month + dir, 1, 12); break;
+                case 3:
+                    if (var->year < MENU_MIN_YEAR) {
+                        var->year = MENU_MIN_YEAR;
+                    } else if (dir > 0 && var->year < 9999) {
+                        ++var->year;
+                    } else if (dir < 0 && var->year > MENU_MIN_YEAR) {
+                        --var->year;
+                    }
+                    break;
+            }
+
+            changed = true;
+            change();
+            if (cb) cb(*var);
+        }
+
+        if (beginRender(var, label) && prepareRight(11)) {
+            bool act = menu.isActive();
+            menu.print(act && menu.active == 1 ? menu.marker : ' ');
+            menu.printDec2z(var->day);
+            menu.print(act && menu.active == 2 ? menu.marker : '.');
+            menu.printDec2z(var->month);
+            menu.print(act && menu.active == 3 ? menu.marker : '.');
+            menu.printDec4z(var->year);
+        }
+
+        return changed;
+    }
+
+    // =================== BITMASK ===================
+    // MARK: bitmask
+
+#ifdef ARDUINO
+    template <typename T>
+    bool Bitmask(const __FlashStringHelper* label, T* var, uint8_t bits, void (*cb)(T v) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        return Bitmask(label_s, var, bits, cb);
+    }
+
+    template <typename T>
+    bool Bitmask(const String& label, T* var, uint8_t bits, void (*cb)(T v) = nullptr) {
+        return Bitmask(label.c_str(), var, bits, cb);
+    }
+#endif
+
+    template <typename T>
+    bool Bitmask(const char* label, T* var, uint8_t bits, void (*cb)(T v) = nullptr) {
+        if (!beginWidget()) return false;
+        if (!bits) return false;
+
+        uint8_t maxBits = sizeof(T) * 8;
+        if (bits > maxBits) bits = maxBits;
+
+        bool changed = false;
+        int8_t dir = 0;
+        int8_t curdir = 0;
+
+        _editDir(dir, curdir);
+        _moveActive(curdir, bits);
+
+        if (dir && menu.isActive()) {
+            uint8_t bit = bits - menu.active;
+            T mask = ((T)1 << bit);
+
+            if (dir > 0) {
+                *var |= mask;
+            } else {
+                *var &= ~mask;
+            }
+
+            changed = true;
+            change();
+            if (cb) cb(*var);
+        }
+
+        if (beginRender(var, label) && prepareRight(bits + 1)) {
+            bool act = menu.isActive();
+            if (!act) menu.print(' ');
+
+            for (uint8_t i = 0; i < bits; i++) {
+                if (act && menu.active == i + 1) menu.print(menu.marker);
+
+                uint8_t bit = bits - 1 - i;
+                menu.print((*var & ((T)1 << bit)) ? '1' : '0');
+            }
+        }
+
+        return changed;
+    }
+
+    // =================== EDIT STR ===================
+    // MARK: edit str
+
+#ifdef ARDUINO
+
+    // default AB
+    bool Text(const __FlashStringHelper* label, char* var, uint8_t maxLen, void (*cb)(const char* str) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        return Text(label_s, var, maxLen, cb);
+    }
+    bool Text(const String& label, char* var, uint8_t maxLen, void (*cb)(const char* str) = nullptr) {
+        return Text(label.c_str(), var, maxLen, cb);
+    }
+
+    // custom AB
+    bool Text(const __FlashStringHelper* label, char* var, uint8_t maxLen, const __FlashStringHelper* alphabet, void (*cb)(const char* str) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        return Text(label_s, var, maxLen, alphabet, cb);
+    }
+    bool Text(const String& label, char* var, uint8_t maxLen, const __FlashStringHelper* alphabet, void (*cb)(const char* str) = nullptr) {
+        return Text(label.c_str(), var, maxLen, alphabet, cb);
+    }
+    bool Text(const char* label, char* var, uint8_t maxLen, const __FlashStringHelper* alphabet, void (*cb)(const char* str) = nullptr) {
+        return _editText(label, var, maxLen, (const char*)alphabet, cb);
+    }
+#else
+    bool Text(const char* label, char* var, uint8_t maxLen, const char* alphabet, void (*cb)(const char* str) = nullptr) {
+        return _editText(label, var, maxLen, alphabet, cb);
+    }
+#endif
+
+    bool Text(const char* label, char* var, uint8_t maxLen, void (*cb)(const char* str) = nullptr) {
+        return _editText(label, var, maxLen, _gmInputAlphabet, cb);
+    }
+
+    // =================== EDIT ASCII ===================
+    // MARK: edit ascii
+
+#ifdef ARDUINO
+    bool TextASCII(const __FlashStringHelper* label, char* var, uint8_t maxLen, void (*cb)(const char* str) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        return TextASCII(label_s, var, maxLen, cb);
+    }
+
+    bool TextASCII(const String& label, char* var, uint8_t maxLen, void (*cb)(const char* str) = nullptr) {
+        return TextASCII(label.c_str(), var, maxLen, cb);
+    }
+#endif
+
+    bool TextASCII(const char* label, char* var, uint8_t maxLen, void (*cb)(const char* str) = nullptr) {
+        if (!beginWidget()) return false;
+        if (!maxLen) return false;
+        if (maxLen == UINT8_MAX) --maxLen;
+
+        uint8_t len = 0;
+        while (len < maxLen && var[len]) ++len;
+        var[len] = '\0';
+
+        bool changed = false;
+        int8_t dir = 0;
+        int8_t curdir = 0;
+
+        // active:
+        // 0       - редактирование выключено
+        // 1..len  - символы строки
+        // len + 1 - техническая позиция справа
+
+        _editDir(dir, curdir);
+        _moveActive(curdir, len + 1);
+
+        if (dir && menu.active) {
+            uint8_t pos = menu.active - 1;
+
+            if (pos < len) {
+                // ASCII: 32 (' ') ... 126 ('~')
+                uint8_t c = (uint8_t)var[pos];
+
+                if (c < 32 || c > 126) {
+                    c = dir > 0 ? 32 : 126;
+                } else if (dir > 0) {
+                    c = (c < 126) ? c + 1 : 32;
+                } else {
+                    c = (c > 32) ? c - 1 : 126;
+                }
+
+                if (var[pos] != (char)c) {
+                    var[pos] = (char)c;
+                    changed = true;
+                }
+            } else {
+                if (dir > 0) {
+                    if (len < maxLen) {
+                        var[len++] = 'A';
+                        var[len] = '\0';
+                        changed = true;
+                    }
+                } else {
+                    if (len) {
+                        var[--len] = '\0';
+                        menu.active = len + 1;
+                        changed = true;
+                    }
+                }
+            }
+
+            if (changed) {
+                change();
+                if (cb) cb(var);
+            }
+        }
+
+        if (beginRender(var, label)) {
+            uint8_t width = len + (menu.isActive() ? 1 : 0);
+
+            if (prepareRight(width)) {
+                if (menu.isActive()) {
+                    uint8_t pos = menu.active - 1;
+
+                    for (uint8_t i = 0; i < len; i++) {
+                        if (i == pos) menu.print(menu.marker);
+                        menu.print(var[i]);
+                    }
+
+                    if (pos == len) menu.print(menu.marker);
+                } else {
+                    menu.print(var);
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    // =================== EDIT_INT ===================
+    // MARK: edit int
+
+#ifdef ARDUINO
+    template <typename T>
+    bool Int(const __FlashStringHelper* label, T* var, typename _typeIdentity<T>::type minv, typename _typeIdentity<T>::type maxv, typename _typeIdentity<T>::type step, const __FlashStringHelper* unit, void (*cb)(T v) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        MENU_READ_PGM(unit, unit_s);
+        return Int(label_s, var, minv, maxv, step, unit_s, cb);
+    }
+
+    template <typename T>
+    bool Int(const String& label, T* var, typename _typeIdentity<T>::type minv, typename _typeIdentity<T>::type maxv, typename _typeIdentity<T>::type step, const String& unit, void (*cb)(T v) = nullptr) {
+        return Int(label.c_str(), var, minv, maxv, step, unit.c_str(), cb);
+    }
+#endif
+
+    template <typename T>
+    bool Int(const char* label, T* var, typename _typeIdentity<T>::type minv, typename _typeIdentity<T>::type maxv, typename _typeIdentity<T>::type step, const char* unit = "", void (*cb)(T v) = nullptr) {
+        int32_t value = *var;
+
+        bool changed = _editNum<int32_t>(label, &value, (int32_t)minv, (int32_t)maxv, (int32_t)step, 10, unit, nullptr, var);
+
+        if (changed) {
+            *var = (T)value;
+            if (cb) cb(*var);
+        }
+
+        return changed;
+    }
+
+    // =================== EDIT_FLOAT ===================
+    // MARK: edit float
+
+#ifdef ARDUINO
+    bool Float(const __FlashStringHelper* label, float* var, float minv, float maxv, float step, uint8_t dec, const __FlashStringHelper* unit, void (*cb)(float v) = nullptr) {
+        MENU_READ_PGM(label, label_s);
+        MENU_READ_PGM(unit, unit_s);
+        return Float(label_s, var, minv, maxv, step, dec, unit_s, cb);
+    }
+
+    bool Float(const String& label, float* var, float minv, float maxv, float step, uint8_t dec, const String& unit, void (*cb)(float v) = nullptr) {
+        return Float(label.c_str(), var, minv, maxv, step, dec, unit.c_str(), cb);
+    }
+#endif
+
+    bool Float(const char* label, float* var, float minv, float maxv, float step, uint8_t dec = 2, const char* unit = "", void (*cb)(float v) = nullptr) {
+        return _editNum<float>(label, var, minv, maxv, step, dec, unit, cb);
+    }
+
+    // =================== EDIT_NUMBER ===================
+    // MARK: edit number
+
+#ifdef ARDUINO
+    template <typename T>
+    bool Number(const __FlashStringHelper* label, T* var, typename _typeIdentity<T>::type minv, typename _typeIdentity<T>::type maxv, typename _typeIdentity<T>::type step, const __FlashStringHelper* unit, void (*cb)(T v) = nullptr) {
+        return Int(label, var, minv, maxv, step, unit, cb);
+    }
+
+    bool Number(const __FlashStringHelper* label, float* var, float minv, float maxv, float step, const __FlashStringHelper* unit, void (*cb)(float v) = nullptr) {
+        return Float(label, var, minv, maxv, step, 2, unit, cb);
+    }
+
+    bool Number(const __FlashStringHelper* label, float* var, float minv, float maxv, float step, uint8_t dec, const __FlashStringHelper* unit, void (*cb)(float v) = nullptr) {
+        return Float(label, var, minv, maxv, step, dec, unit, cb);
+    }
+
+    template <typename T>
+    bool Number(const String& label, T* var, typename _typeIdentity<T>::type minv, typename _typeIdentity<T>::type maxv, typename _typeIdentity<T>::type step, const String& unit, void (*cb)(T v) = nullptr) {
+        return Int(label, var, minv, maxv, step, unit, cb);
+    }
+
+    bool Number(const String& label, float* var, float minv, float maxv, float step, const String& unit, void (*cb)(float v) = nullptr) {
+        return Float(label, var, minv, maxv, step, 2, unit, cb);
+    }
+
+    bool Number(const String& label, float* var, float minv, float maxv, float step, uint8_t dec, const String& unit, void (*cb)(float v) = nullptr) {
+        return Float(label, var, minv, maxv, step, dec, unit, cb);
+    }
+#endif
+
+    template <typename T>
+    bool Number(const char* label, T* var, typename _typeIdentity<T>::type minv, typename _typeIdentity<T>::type maxv, typename _typeIdentity<T>::type step, const char* unit = "", void (*cb)(T v) = nullptr) {
+        return Int(label, var, minv, maxv, step, unit, cb);
+    }
+
+    bool Number(const char* label, float* var, float minv, float maxv, float step, const char* unit = "", void (*cb)(float v) = nullptr) {
+        return Float(label, var, minv, maxv, step, 2, unit, cb);
+    }
+
+    bool Number(const char* label, float* var, float minv, float maxv, float step, uint8_t dec, const char* unit = "", void (*cb)(float v) = nullptr) {
+        return Float(label, var, minv, maxv, step, dec, unit, cb);
+    }
+
+    // =================== MISC ===================
+
+    // обновить экран после работы билдера
+    void refresh() {
+        switch (_action) {
+            case Action::Set:
+            case Action::SetUp:
+            case Action::SetDown:
+            case Action::Right:
+            case Action::Left:
+                _refresh = true;
+                break;
+
+            default: break;
+        }
+    }
+
+    // будет обновление после вызова
+    bool isRefresh() {
+        return _refresh;
+    }
+
+    // было действие с каким-то из виджетов выше
+    bool wasSet() {
+        return _changed;
+    }
+
+    // сбросить флаг чтения wasSet
+    void clearSet() {
+        _changed = false;
+    }
+
+#ifndef MENU_NO_POPUP
+    // открыть модальное окно. id 0 зарезервирован
+    bool openPopup(uint8_t id, uint8_t selected = 0) {
+        bool alreadyOpen = menu.popup.id == id;
+        if (!menu.popup.open(id, selected)) return false;
+        if (alreadyOpen) return true;
+        _popupOpened = true;
+        menu.resetPart();
+        _refresh = true;
+        return true;
+    }
+
+    // закрыть модальное окно без результата
+    bool closePopup() {
+        if (!menu.isPopup()) return false;
+        menu.popup.close();
+        menu.resetPart();
+        _refresh = true;
+        return true;
+    }
+
+    bool isPopup() const {
+        return menu.isPopup();
+    }
+
+    uint8_t popupID() const {
+        return menu.popupID();
+    }
+#endif
+
+    // ===================== API =====================
+    // MARK: api
+
+    // зарегистрировать виджет без проверки доступности
+    bool registerWidget() {
+        return menu.registerWidget();
+    }
+
+    // зарегистрировать виджет и проверить, относится ли проход к нему
+    bool beginWidget() {
+        return registerWidget() && _reachable();
+    }
+
+    // получить текущее действие билдера
+    Action getAction() {
+        return _action;
+    }
+
+    // начать вывод виджета, с label - изменяемой части после него
+    bool beginRender(const void* targetVar = nullptr, const char* label = nullptr) {
+        if (_action != Action::Refresh && _refresh) return false;
+        if (_targetRow != UINT8_MAX && _targetRow != menu.currentRow()) return false;
+
+        if (_targetVar) {
+            if (_targetVar != targetVar) return false;
+            _refresh = true;
+        }
+
+#ifndef MENU_NO_PART
+        if (label && _action != Action::Refresh && menu.prevLen >= 0 && menu.usePart()) {
+            uint8_t letters;
+            menuutil::strlenU(label, &letters);
+            if (letters <= INT8_MAX) {
+                menu.setPos(menu.markerSize + letters + menu.isActive());
+                return true;
+            }
+        }
+#endif
+
+        menu.beginRow();
+        if (label) {
+            menu.print(label);
+            if (menu.isActive()) menu.print(':');
+        }
+        return true;
+    }
+
+    // подготовить правое выравнивание, при нехватке места обрезать вывод с ".."
+    bool prepareRight(uint8_t width) {
+        if (menu.left < width) {
+            menu.reserveEllipsis();
+            return menu.left > 0;
+        }
+
+#ifndef MENU_NO_PART
+        if (_action != Action::Refresh && menu.usePart()) {
+            if (menu.prevLen >= 0) menu.setPos(menu.cols - (menu.prevLen > width ? menu.prevLen : width));
+            menu.prevLen = width <= INT8_MAX ? width : -1;
+        }
+#endif
+
+        menu.padEnd(width);
+        return true;
+    }
+
+    // поднять флаг изменения (влияет на wasSet())
+    void change() {
+        _changed = true;
+    }
+
+#ifndef MENU_NO_PAGES
+    // получить новый id для Page
+    uint8_t nextId() {
+        return _nextPageId++;
+    }
+
+    // открыть страницу и установить выбранный виджет
+    bool openPage(uint8_t id, uint8_t chosen = 0) {
+        if (!menu.pages.open(id)) return false;
+        menu.setChosenID(chosen);
+        menu.resetPart();
+        menu.len = menu.chosenID();  // checkOverflow ещё видит длину старой страницы
+        refresh();
+        return true;
+    }
+
+    // закрыть текущую страницу
+    void closePage() {
+        menu.pages.close();
+        menu.resetPart();
+        menu.len = menu.chosenID();  // checkOverflow ещё видит длину закрытой страницы
+        refresh();
+    }
+#endif
+
+    // низкоуровневый API меню для своих виджетов
+    Menu& menu;
+
+    // MARK: private
+   private:
+    const void* _targetVar = nullptr;
+    Action _action;
+    uint8_t _targetRow;  // UINT8_MAX: нет привязки к строке
+    bool _refresh = false;
+    bool _changed = false;
+#ifndef MENU_NO_POPUP
+    bool _popupPass = false;
+    bool _popupSeen = false;
+    bool _popupOpened = false;
+#endif
+#ifndef MENU_NO_PAGES
+    uint8_t _nextPageId;
+    bool _achieved = false;
+#endif
+
+#ifndef MENU_NO_POPUP
+    // вывести строку по центру, длинную строку обрезать справа
+    void _popupText(const char* str) {
+        uint8_t letters;
+        uint8_t len = menuutil::strlenU(str, &letters);
+        uint8_t col = letters < menu.cols ? (menu.cols - letters) / 2 : 0;
+        menu.pad(col);
+        if (str[len]) menu.print(str);
+        else menu.print(str, len, letters);
+    }
+
+    // вывести одну кнопку по центру
+    void _popupButton(const char* str, uint8_t len, uint8_t letters) {
+        uint16_t width = (uint16_t)letters + 1;
+        uint8_t col = width < menu.cols ? (menu.cols - width) / 2 : 0;
+        menu.pad(col);
+        menu.print(menu.marker);
+        menu.print(str, len, letters);
+    }
+
+    // вывести кнопки popup в текущую строку
+    void _popupButtons(const char* first, const char* second) {
+        uint8_t firstLetters;
+        uint8_t firstLen = menuutil::strlenU(first, &firstLetters);
+
+        if (!second) {
+            _popupButton(first, firstLen, firstLetters);
+            return;
+        }
+
+        uint8_t secondLetters;
+        uint8_t secondLen = menuutil::strlenU(second, &secondLetters);
+        uint16_t width = (uint16_t)firstLetters + secondLetters + 4;
+
+        if (width > menu.cols) {
+            if (menu.popup.selected) _popupButton(second, secondLen, secondLetters);
+            else _popupButton(first, firstLen, firstLetters);
+            return;
+        }
+
+        menu.pad((menu.cols - width) / 2);
+        menu.print(menu.popup.selected ? ' ' : menu.marker);
+        menu.print(first, firstLen, firstLetters);
+        menu.print("  ", 2);
+        menu.print(menu.popup.selected ? menu.marker : ' ');
+        menu.print(second, secondLen, secondLetters);
+    }
+
+    // вывести popup сразу готовыми строками без отдельной очистки экрана
+    void _renderPopup(const char* title, const char* first, const char* second) {
+        if (!menu.rows) return;
+        uint8_t buttonRow = menu.rows == 1 ? 0 : (menu.rows - 2) / 2 + 1;
+
+        for (uint8_t row = 0; row < menu.rows; ++row) {
+            if (menu.state) {
+                menu.setPos(0, row);
+                menu.state(row, false, false);
+            }
+            menu.setPos(0, row);
+
+            if (menu.rows > 1 && row == buttonRow - 1) {
+                _popupText(title);
+            } else if (row == buttonRow) {
+                _popupButtons(first, second);
+            }
+            menu.padEnd();
+        }
+    }
+
+    int8_t _popup(uint8_t id, const char* title, const char* first, const char* second) {
+        if (!_popupPass || menu.popup.id != id) return PopupNone;
+        _popupSeen = true;
+        if (_popupOpened) return PopupNone;
+
+        switch (_action) {
+            case Action::Refresh:
+                _renderPopup(title, first, second);
+                break;
+
+            case Action::Set: {
+                int8_t result = second ? menu.popup.selected : 0;
+                menu.popup.close();
+                menu.resetPart();
+                refresh();
+                return result;
+            }
+
+            case Action::SetUp:
+            case Action::Left:
+                if (second && menu.popup.selected) {
+                    menu.popup.selected = 0;
+                    refresh();
+                }
+                break;
+
+            case Action::SetDown:
+            case Action::Right:
+                if (second && !menu.popup.selected) {
+                    menu.popup.selected = 1;
+                    refresh();
+                }
+                break;
+
+            default: break;
+        }
+        return PopupNone;
+    }
+#endif
+
+    // найти ближайший доступный пункт Select без изменения исходного индекса
+    static bool _selectFind(const char* opts, uint8_t current, bool forward, uint8_t& result) {
+        uint8_t count = menuutil::countSub(opts, ';');
+        if (forward) {
+            if (current >= count - 1) return false;
+        } else {
+            if (!current) return false;
+            if (current > count) current = count;
+        }
+
+        uint8_t i = forward ? current + 1 : current - 1;
+        for (;;) {
+            const char* str;
+            uint8_t len = menuutil::getSub(opts, ';', i, &str);
+            if (!len || *str != '~') {
+                result = i;
+                return true;
+            }
+
+            if (forward) {
+                if (++i >= count) break;
+            } else {
+                if (!i) break;
+                --i;
+            }
+        }
+        return false;
+    }
+
+    // ограничить значение диапазоном с циклическим переходом
+    static int _clampRing(int v, int minv, int maxv) {
+        return v < minv ? maxv : (v > maxv ? minv : v);
+    }
+
+    // расстояние между упорядоченными int32 без знакового переполнения
+    static bool _closerThanStep(int32_t high, int32_t low, int32_t step) {
+        return (uint32_t)high - (uint32_t)low < (uint32_t)step;
+    }
+
+    static bool _closerThanStep(float high, float low, float step) {
+        return high - low < step;
+    }
+
+    // относится ли текущий проход к зарегистрированному виджету
+    bool _reachable() {
+        if (_action == Action::None) return false;
+#ifndef MENU_NO_POPUP
+        if (_popupPass) return false;
+#endif
+        if (_action == Action::Refresh) return menu.isVisible();
+        return menu.isChosen();
+    }
+
+    // преобразовать действие в изменение значения и позиции редактирования
+    void _editDir(int8_t& dir, int8_t& curdir) {
+        switch (_action) {
+            case Action::Set:
+            case Action::Right: curdir = 1; break;
+            case Action::Left: curdir = -1; break;
+            case Action::SetUp: dir = 1; break;
+            case Action::SetDown: dir = -1; break;
+            default: break;
+        }
+    }
+
+    // переместить внутреннюю позицию редактирования
+    void _moveActive(int8_t dir, uint8_t max) {
+        bool editing = menu.active;
+        if (dir > 0) {
+            menu.active = menu.active >= max ? 0 : menu.active + 1;
+        } else if (dir < 0 && menu.active) {
+            menu.active = menu.active <= 1 ? 0 : menu.active - 1;
+        }
+        if (editing != (bool)menu.active) menu.resetPart();
+    }
+
+    // сбросить состояние перед новым проходом билдера
+    void _init() {
+        _refresh = _changed = false;
+#ifndef MENU_NO_POPUP
+        _popupPass = menu.isPopup();
+        _popupSeen = _popupOpened = false;
+#endif
+#ifndef MENU_NO_PAGES
+        _achieved = menu.openRoot();
+        _nextPageId = 1;
+#else
+        menu.openRoot();
+#endif
+        _targetVar = nullptr;
+        _targetRow = UINT8_MAX;
+    }
+
+    // выполнить пользовательский билдер и проверить состояние навигации
+    void _build(BuildCallback cb) {
+        cb(*this);
+
+        ++menu.len;
+
+#ifndef MENU_NO_POPUP
+        if (_popupPass && !_popupSeen) {
+            menu.popup.close();
+            _refresh = true;
+        }
+#endif
+
+#ifndef MENU_NO_PAGES
+        if (!_achieved) {
+            menu.home();
+            _refresh = true;
+        }
+#endif
+
+        if (menu.checkOverflow()) {
+            _refresh = true;
+        }
+    }
+
+    // вывести целочисленное значение с единицей измерения
+    template <typename T>
+    void _printVar(const T* var, uint8_t base, const char* unit) {
+        char buf[MENU_INT_BUFFER];
+        uint8_t len = fn::strings::appendSigned(*var, base, buf);
+        _printNumRow(buf, len, unit);
+    }
+
+    // вывести float значение с единицей измерения
+    void _printVar(const float* var, uint8_t dec, const char* unit) {
+        char buf[MENU_FLT_BUFFER];
+        uint8_t len = fn::strings::appendFloat(*var, dec, buf);
+        _printNumRow(buf, len, unit);
+    }
+
+    // вывести готовое число с единицей измерения справа
+    void _printNumRow(const char* buf, uint8_t len, const char* unit) {
+        uint8_t letters;
+        uint8_t ulen = menuutil::strlenU(unit, &letters);
+        uint8_t width = letters > UINT8_MAX - len ? UINT8_MAX : len + letters;
+        if (!prepareRight(width)) return;
+        menu.print(buf, len);
+        menu.print(unit, ulen, letters);
+    }
+
+    // MARK: _editNum
+    template <typename T>
+    bool _editNum(const char* label, T* var, T minv, T maxv, T step, uint8_t dec_base, const char* unit = "", void (*cb)(T v) = nullptr, const void* targetVar = nullptr) {
+        if (!beginWidget()) return false;
+        bool changed = false;
+        bool render = false;
+
+        switch (getAction()) {
+            case Action::Refresh:
+                render = true;
+                break;
+
+            case Action::Set:
+                menu.toggle();
+                render = true;
+                break;
+
+            case Action::SetUp:
+            case Action::Right:
+                if (step > 0 && *var < maxv) {
+                    *var = _closerThanStep(maxv, *var, step) ? maxv : *var + step;
+                    render = changed = true;
+                    change();
+                }
+                break;
+
+            case Action::SetDown:
+            case Action::Left:
+                if (step > 0 && *var > minv) {
+                    *var = _closerThanStep(*var, minv, step) ? minv : *var - step;
+                    render = changed = true;
+                    change();
+                }
+                break;
+
+            default: break;
+        }
+
+        if (changed && cb) cb(*var);
+        if (render && beginRender(targetVar ? targetVar : var, label)) _printVar(var, dec_base, unit);
+
+        return changed;
+    }
+
+    // MARK: _editText
+    bool _editText(const char* label, char* var, uint8_t maxLen, const char* alphabet, void (*cb)(const char* str)) {
+        if (!beginWidget()) return false;
+        if (!maxLen || !alphabet) return false;
+        if (maxLen == UINT8_MAX) --maxLen;
+
+        uint8_t len = 0;
+        while (len < maxLen && var[len]) ++len;
+        var[len] = '\0';
+
+        bool changed = false;
+        int8_t dir = 0;
+        int8_t curdir = 0;
+
+        _editDir(dir, curdir);
+
+        // active:
+        // 0       - редактирование выключено
+        // 1..len  - реальные символы
+        // len + 1 - техническая позиция справа
+
+        _moveActive(curdir, len + 1);
+
+        // change
+        if (dir && menu.active) {
+            uint8_t pos = menu.active - 1;
+
+            if (pos < len) {
+                char next = _inputNext(var[pos], dir, alphabet);
+
+                if (next != var[pos]) {
+                    var[pos] = next;
+                    changed = true;
+                }
+            } else {
+                if (dir > 0) {
+                    if (len < maxLen) {
+                        char c = MENU_PGM_READ(alphabet);
+
+                        if (c) {
+                            var[len++] = c;
+                            var[len] = '\0';
+                            changed = true;
+                        }
+                    }
+                } else {
+                    if (len) {
+                        var[--len] = '\0';
+                        menu.active = len + 1;
+                        changed = true;
+                    }
+                }
+            }
+
+            if (changed) {
+                change();
+                if (cb) cb(var);
+            }
+        }
+
+        // ================= RENDER =================
+        if (beginRender(var, label)) {
+            uint8_t width = len + (menu.isActive() ? 1 : 0);  // + marker
+
+            if (prepareRight(width)) {
+                if (menu.isActive()) {
+                    uint8_t pos = menu.active - 1;
+
+                    for (uint8_t i = 0; i < len; i++) {
+                        if (i == pos) menu.print(menu.marker);
+                        menu.print(var[i]);
+                    }
+
+                    if (pos == len) {
+                        menu.print(menu.marker);
+                    }
+
+                } else {
+                    menu.print(var);
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    // получить последний символ алфавита ввода
+    static char _inputLast(const char* alphabet) {
+        size_t len = MENU_PGM_LEN(alphabet);
+        return len ? MENU_PGM_READ(alphabet + len - 1) : '\0';
+    }
+
+    // получить следующий или предыдущий символ алфавита
+    static char _inputNext(char current, int8_t dir, const char* alphabet) {
+        char first = MENU_PGM_READ(alphabet);
+
+        if (!first) {
+            return current;
+        }
+
+        const char* ptr = MENU_PGM_FIND(alphabet, current);
+
+        if (!ptr) {
+            return dir > 0 ? first : _inputLast(alphabet);
+        }
+
+        if (dir > 0) {
+            char next = MENU_PGM_READ(ptr + 1);
+            return next ? next : first;
+        }
+
+        if (ptr != alphabet) {
+            return MENU_PGM_READ(ptr - 1);
+        }
+
+        return _inputLast(alphabet);
+    }
+};
+
+}  // namespace menu
+}  // namespace disp
+}  // namespace fn
+
+#endif  // F_USE_MENU
