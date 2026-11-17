@@ -1,0 +1,339 @@
+#pragma once
+// StringN<N> — строка фиксированной ёмкости в стеке/объекте, без динамической памяти.
+// Ёмкость N не включает завершающий ноль: буфер занимает N + 1 байт.
+//
+// Пример:
+//   fn::StringN<32> s;
+//   s.add("value=").add(123).add(' ').add(3.14, 2);
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "../core/Features.h"
+
+#if F_USE_STRINGN
+
+#ifdef ARDUINO
+#include <Arduino.h>
+#endif
+
+#include "StringBuilder.h"
+
+namespace fn {
+
+template <uint16_t maxlen>
+class StringN {
+    static_assert(maxlen <= INT16_MAX, "StringN capacity exceeds INT16_MAX");
+
+   public:
+    StringN() = default;
+    StringN(const StringN& str) = default;
+    StringN& operator=(const StringN& str) = default;
+
+    StringN(char c) {
+        add(c);
+    }
+    StringN(char c, int16_t amount) {
+        add(c, amount);
+    }
+    StringN(const char* str) {
+        add(str);
+    }
+    StringN(const char* str, int16_t len) {
+        add(str, len);
+    }
+
+#ifdef ARDUINO
+    StringN(const __FlashStringHelper* fstr) {
+        add(fstr);
+    }
+    StringN(const __FlashStringHelper* fstr, int16_t len) {
+        add(fstr, len);
+    }
+#endif
+
+    template <uint16_t N>
+    StringN(const StringN<N>& str) {
+        add(str);
+    }
+
+    template <typename T>
+    StringN(T val) {
+        add(val);
+    }
+
+    template <typename T, typename P>
+    StringN(T val, P p) {
+        add(val, (uint8_t)p);
+    }
+
+    // ============== OPERATOR ==============
+
+    // + val только для временного StringN
+    template <typename T>
+    StringN&& operator+(T val) && {
+        add(val);
+        return static_cast<StringN&&>(*this);
+    }
+
+    template <uint16_t N>
+    StringN&& operator+(const StringN<N>& other) && {
+        add(other);
+        return static_cast<StringN&&>(*this);
+    }
+
+    // += val
+    template <typename T>
+    StringN& operator+=(T val) {
+        return add(val);
+    }
+    template <uint16_t N>
+    StringN& operator+=(const StringN<N>& other) {
+        return add<N>(other);
+    }
+
+    // = val
+    template <typename T>
+    StringN& operator=(T val) {
+        clear();
+        return add(val);
+    }
+
+    // ============== StringN ==============
+    template <uint16_t N>
+    StringN& add(const StringN<N>& str) {
+        return add(str.c_str(), str.length());
+    }
+
+    template <uint16_t N>
+    bool operator==(const StringN<N>& other) const {
+        return _len == other._len && !memcmp(_buf, other._buf, _len);
+    }
+
+    template <uint16_t N>
+    bool operator!=(const StringN<N>& other) const {
+        return !(*this == other);
+    }
+
+    // ============== CHAR ==============
+    StringN& add(char c) {
+        if (_len < maxlen) {
+            _buf[_len++] = c;
+            _buf[_len] = 0;
+        }
+        return *this;
+    }
+    StringN& add(char c, int16_t amount) {
+        _len += strings::appendRepeat(c, amount, _buf + _len, _left());
+        return *this;
+    }
+
+    // ============== STRING ==============
+    StringN& add(const char* str) {
+        _len += strings::append(str, _buf + _len, _left());
+        return *this;
+    }
+    StringN& add(const char* str, int16_t len) {
+        _len += strings::append(str, len, _buf + _len, _left());
+        return *this;
+    }
+
+#ifdef ARDUINO
+    StringN& add(const __FlashStringHelper* fstr) {
+        _len += strings::appendProgmem(fstr, _buf + _len, _left());
+        return *this;
+    }
+    StringN& add(const __FlashStringHelper* fstr, int16_t len) {
+        _len += strings::appendProgmem(fstr, len, _buf + _len, _left());
+        return *this;
+    }
+#endif
+
+    // добавить в начало
+    StringN& prepend(const char* str, uint16_t len) {
+        if (!str || !len) return *this;
+
+        uint16_t addLen = len;
+        if (addLen > maxlen - _len) {
+            addLen = maxlen - _len;
+        }
+
+        if (!addLen) return *this;
+
+        memmove(_buf + addLen, _buf, _len + 1);
+        memcpy(_buf, str, addLen);
+        _len += addLen;
+
+        return *this;
+    }
+
+    StringN& prepend(const char* str) {
+        return prepend(str, strlen(str));
+    }
+
+    // ============== BOOL ==============
+    StringN& add(bool v) {
+        return add(v ? '1' : '0');
+    }
+
+    // ============== INT ==============
+    StringN& add(unsigned char v, int base = 10) {
+        return add((unsigned long)v, base);
+    }
+    StringN& add(unsigned short v, int base = 10) {
+        return add((unsigned long)v, base);
+    }
+    StringN& add(unsigned int v, int base = 10) {
+        return add((unsigned long)v, base);
+    }
+    StringN& add(unsigned long v, int base = 10) {
+#ifndef STRN_DEFAULT_INT
+        _len += strings::appendUnsigned(v, base, _buf + _len, _left());
+        return *this;
+#else
+        char temp[33];
+        ultoa(v, temp, base);
+        return add(temp);
+#endif
+    }
+    StringN& add(unsigned long long v, int base = 10) {
+        _len += strings::appendUnsigned64(v, base, _buf + _len, _left());
+        return *this;
+    }
+
+    StringN& add(signed char v, int base = 10) {
+        return add((long)v, base);
+    }
+    StringN& add(short v, int base = 10) {
+        return add((long)v, base);
+    }
+    StringN& add(int v, int base = 10) {
+        return add((long)v, base);
+    }
+    StringN& add(long v, int base = 10) {
+#ifndef STRN_DEFAULT_INT
+        _len += strings::appendSigned(v, base, _buf + _len, _left());
+        return *this;
+#else
+        char temp[33];
+        ltoa(v, temp, base);
+        return add(temp);
+#endif
+    }
+    StringN& add(long long v, int base = 10) {
+        _len += strings::appendSigned64(v, base, _buf + _len, _left());
+        return *this;
+    }
+
+    // ============== FLOAT ==============
+    StringN& add(float v, int dec = 2) {
+#ifndef STRN_DEFAULT_FLOAT
+        _len += strings::appendFloat(v, dec, _buf + _len, _left());
+        return *this;
+#else
+        char temp[32];
+        dtostrf(v, 0, dec, temp);
+        return add(temp);
+#endif
+    }
+    StringN& add(double v, int dec = 2) {
+        return add(float(v), dec);
+    }
+
+    // ============== EXPORT ==============
+    char* c_str() {
+        return _buf;
+    }
+    operator char*() {
+        return _buf;
+    }
+
+    const char* c_str() const {
+        return _buf;
+    }
+    operator const char*() const {
+        return _buf;
+    }
+
+    // ============== MISC ==============
+    // новая строка \r\n
+    StringN& rn() {
+        add('\r');
+        return add('\n');
+    }
+
+    // очистить
+    StringN& clear() {
+        _buf[0] = 0;
+        _len = 0;
+        return *this;
+    }
+
+    // хэш
+    uint32_t hash() const {
+        uint32_t res = 0;
+        uint16_t len = _len;
+        const char* p = _buf;
+        while (len--) res = res + (res << 5) + *p++;
+        return res;
+    }
+
+    // текущая длина
+    uint16_t length() const {
+        return _len;
+    }
+
+    // макс. длина
+    uint16_t capacity() const {
+        return maxlen;
+    }
+
+    // строка заполнена (возможно текст обрезан)
+    bool isFull() const {
+        return _len == maxlen;
+    }
+
+   private:
+    char _buf[maxlen + 1] = {};
+    uint16_t _len = 0;
+
+    int16_t _left() const {
+        return maxlen - _len;
+    }
+};
+
+// MARK: helpers
+template <size_t M, uint16_t N>
+StringN<M - 1 + N> operator+(const char (&lhs)[M], const StringN<N>& rhs) {
+    StringN<M - 1 + N> out(lhs);
+    out += rhs;
+    return out;
+}
+
+template <uint16_t N, size_t M>
+StringN<N + M - 1> operator+(const StringN<N>& lhs, const char (&rhs)[M]) {
+    StringN<N + M - 1> out(lhs);
+    out += rhs;
+    return out;
+}
+
+template <uint16_t A, uint16_t B>
+StringN<A + B> operator+(const StringN<A>& lhs, const StringN<B>& rhs) {
+    StringN<A + B> out(lhs);
+    out += rhs;
+    return out;
+}
+
+// MARK: fixed
+using String8 = StringN<8>;
+using String16 = StringN<16>;
+using String24 = StringN<24>;
+using String32 = StringN<32>;
+using String64 = StringN<64>;
+using String128 = StringN<128>;
+using String256 = StringN<256>;
+
+}  // namespace fn
+
+#endif  // F_USE_STRINGN
