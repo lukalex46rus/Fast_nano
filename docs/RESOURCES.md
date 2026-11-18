@@ -35,7 +35,7 @@
 | пул irq (FN_IRQ_SLOTS=8) | 40 Б + 6 на INT | 8×5 + ext | ✅ |
 | LinearRegression | 17 Б | 4×float + bool | ✅ (float-путь) |
 | Crash Record (.noinit) | 12 Б | magic+boots+flags+code+line+expr+file+sum | ✅ |
-| tmr::acquire реестр | 3 Б | по 1 Б на таймер (TimerCommon.cpp) | ✅ |
+| tmr::acquire реестр | 3 Б | по 1 Б на таймер (TimerCommon.cpp), гейт F_USE_TIMER_ARBITER | ✅ |
 
 Числа flash по модулям — из шапок файлов, сводятся после этапа 3 (avr-size).
 
@@ -52,7 +52,8 @@
 | TIMER0_OVF | ARDUINO | нет | millis/micros/delay |
 | PCINT0/1/2 | IRQ | да | compile-time claim |
 | TIMER0_COMPA/B | NONE | да | compile-time claim |
-| TIMER1_CAPT/OVF/COMPA/B | NONE | да | runtime acquire (потребитель) |
+| TIMER1_CAPT/OVF | PULSE | да | compile-time claim (Pulse определяет ISR) |
+| TIMER1_COMPA/B | NONE | да | compile-time claim |
 | TIMER2_OVF/COMPA/B | NONE | да | compile-time claim |
 | USART_RX | UART | да | compile-time claim |
 | USART_UDRE | NONE | да | compile-time claim |

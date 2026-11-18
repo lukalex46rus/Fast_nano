@@ -21,7 +21,8 @@
 //    enum class Mode : uint8_t
 //      Normal, Ctc, CtcIcr, FastPwm8, FastPwm9, FastPwm10,
 //      PhaseCorrect8, PhaseCorrect9, PhaseCorrect10, FastPwmTop, PhaseCorrectTop
-//    enum class Client : uint8_t { None, Generic, Pulse, Pwm, Servo, Stepper, User }
+//    enum class Client : uint8_t { None, Generic, Pulse, Pwm, Servo, Stepper, Timer, User }
+//      Порядок ОБЯЗАН совпадать с fn::tmr::Client — acquire делегирует общему реестру.
 //
 //    acquire(Client) -> Result / release(Client) / client() -> Client
 //    begin(Mode, Clock) -> Result      Busy, если тактируется или занят

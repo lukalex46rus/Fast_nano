@@ -109,10 +109,12 @@ public:
         if (Tr::lockedByCore && modeUsesOcrATop(m)) return Result::Unsupported;
 
         // Разделяемый таймер: захватываем до любой записи регистров.
+#if F_USE_TIMER_ARBITER
         if (!Tr::lockedByCore) {
             const Result a = tmr::acquire(Tr::timerIndex, tmr::Client::Pwm);
             if (!ok(a)) return a;
         }
+#endif
 
         AtomicBlock lock;
         applyWgm(m);
@@ -135,7 +137,9 @@ public:
         Tr::tccrA() = uint8_t(Tr::tccrA() & 0x0Fu);   // COM = 0, WGM сохранить
         s_owned = false;
         s_cs = 0;
+#if F_USE_TIMER_ARBITER
         if (!Tr::lockedByCore) tmr::release(Tr::timerIndex, tmr::Client::Pwm);
+#endif
     }
 
     static PwmMode mode() { return s_mode; }
@@ -144,10 +148,12 @@ public:
     // ------------------------------ частота --------------------------------
     static uint32_t setFrequency(uint32_t hz) {
         if (hz == 0 || Tr::lockedByCore) return 0;
+#if F_USE_TIMER_ARBITER
         if (!s_owned) {
             const Result a = tmr::acquire(Tr::timerIndex, tmr::Client::Pwm);
             if (!ok(a)) return 0;
         }
+#endif
 
         const bool phase = modeIsPhase(s_mode);
         const uint32_t maxTop = fixedTop();

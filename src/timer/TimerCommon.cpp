@@ -21,6 +21,8 @@
 #include "../core/Config.h"
 #include "TimerCommon.h"
 
+#if F_USE_TIMER_ARBITER
+  
 namespace fn {
 namespace tmr {
 namespace detail {
@@ -50,3 +52,4 @@ Client ownerOf(uint8_t n) {
 
 }  // namespace tmr
 }  // namespace fn
+#endif  // F_USE_TIMER_ARBITER

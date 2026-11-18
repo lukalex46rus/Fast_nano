@@ -80,7 +80,7 @@ public/internal API, зависимостям и статусу готовнос
 | Tick.cpp/h | база времени | millis/micros/elapsed/expired/Timeout/Stopwatch | Types,Atomic,Resources,Arduino | 🔧 (G-1 Stopwatch) |
 | Timer0.cpp/h | драйвер Timer0 | begin/takeover/restoreArduino | TimerCommon,Registers,Resources | 🔧 |
 | Timer1.cpp/h | драйвер Timer1 + арбитраж | acquire/release/takeover/setMode/setPeriodUs/capture | TimerCommon,Registers,Resources | 🔧 (G-7 setMode CS) |
-| Timer2.cpp/h | драйвер Timer2 | begin/takeover/setPeriod | TimerCommon,Registers,Resources | ❌ claim TIMER2 (P0-2), G-2 |
+| Timer2.cpp/h | драйвер Timer2 | begin/takeover/setPeriod | TimerCommon,Registers,Resources | 🔧 (G-2 kClocks RAM) |
 | Watchdog.cpp/h | WDT | enable/disable/feed/setTimeout | Resources,Crash | ❌ claim Wdt (P0-2) |
 
 ## L5.3 — ШИМ
@@ -88,7 +88,7 @@ public/internal API, зависимостям и статусу готовнос
 | Модуль | Ответственность | Public API | Зависимости | Статус |
 |---|---|---|---|---|
 | Pwm.h | словарь ШИМ/карта каналов | PwmMode/PwmOut/channelPin/channelTimer | Types | 🔧 |
-| PwmCommon.h | шаблонный движок | Engine<Traits>::begin/setFrequency/setDuty/attach | TimerCommon,Pwm,Registers,Atomic | ❌ WGM-биты (P0-3), acquire нет (P0-4) |
+| PwmCommon.h | шаблонный движок | Engine<Traits>::begin/setFrequency/setDuty/attach | TimerCommon,Pwm,Registers,Atomic | 🔧 |
 | PwmTimer0/1/2.h | traits таймеров | Traits0/1/2, алиасы Pwm0/1/2 | PwmCommon | ❌ P0-3 (Traits0 бит WGM02) |
 | PwmImpl.h | сборка ШИМ-слоя | include-агрегатор | Pwm* | 🔧 |
 

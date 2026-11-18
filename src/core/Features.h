@@ -103,6 +103,9 @@
 #ifndef F_USE_TICK
 #define F_USE_TICK 1
 #endif
+#ifndef F_USE_TIMER_ARBITER
+#define F_USE_TIMER_ARBITER 1
+#endif
 
 // ------------------------------ периферия ----------------------------------
 #ifndef F_USE_UART

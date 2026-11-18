@@ -79,17 +79,25 @@ inline void applyTopMode(uint32_t n, uint8_t cs) {
 
 // ============================ арбитраж =====================================
 Result Timer1::acquire(Client c) {
+#if F_USE_TIMER_ARBITER
     // Единый реестр: Pulse/Pwm/Servo/Stepper видят один и тот же владелец.
     const tmr::Client tc = static_cast<tmr::Client>(static_cast<uint8_t>(c));
     const Result r = tmr::acquire(1u, tc);
     if (!ok(r)) return timer1_detail::fail(r);
+#endif
     AtomicBlock lock;
+    if (timer1_detail::currentClient != Client::None &&
+        timer1_detail::currentClient != c) {
+        return timer1_detail::fail(Result::Busy);
+    }
     timer1_detail::currentClient = c;
     return timer1_detail::done();
 }
 
 void Timer1::release(Client c) {
+#if F_USE_TIMER_ARBITER
     tmr::release(1u, static_cast<tmr::Client>(static_cast<uint8_t>(c)));
+#endif
     AtomicBlock lock;
     if (timer1_detail::currentClient == c) timer1_detail::currentClient = Client::None;
 }
@@ -115,6 +123,14 @@ Result Timer1::takeover(Mode m, Clock c) {
 }
 
 void Timer1::end() {
+    // Освобождаем общий реестр тем клиентом, который им владеет: иначе
+    // захват останется висеть после остановки таймера (D69).
+    const Client c = timer1_detail::currentClient;
+    if (c != Client::None) {
+#if F_USE_TIMER_ARBITER
+        tmr::release(1u, static_cast<tmr::Client>(static_cast<uint8_t>(c)));
+#endif
+    }
     AtomicBlock lock;
     TIMSK1 = 0;
     TCCR1A = 0;

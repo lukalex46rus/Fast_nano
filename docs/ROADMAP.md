@@ -38,6 +38,9 @@
 | ✅ | P0-2 | Дефолтное владение NONE противоречит безусловным заявкам модулей (~8 TU падают) | core/Resources.h ↔ Pulse/Timer2/Uart/I2c/Spi/Adc/AC/Watchdog .cpp | Привести дефолты к контракту для одиночных владельцев; снять compile-time заявку Timer1 с Pulse (оставить runtime acquire) |
 | ✅ | P0-3 | ШИМ: биты WGM кладутся в поле CS (сломан Timer1, *Top Timer2) | timer/PwmCommon.h applyWgm/wgmB | Сдвиг B-части WGM на позицию 4:3 (T1) / 3 (T0/T2); исправить номер бита WGM02 в Traits0/D32 |
 | ✅ | P0-4 | tmr::acquire заявлен в доках, но не реализован; Pwm1::begin без арбитража | timer/PwmCommon.h, PwmTimer1.h | Реализовать общий реестр (D69) либо честно вызывать Timer1::acquire |
+| ✅ | P0-5 | Traits2 потерял tccrBKeep при вставке wgmBMask (блокер сборки Pwm2) | timer/PwmTimer2.h | Восстановить tccrBKeep = 0x00 |
+| ✅ | P0-6 | Timer1::end не освобождал общий реестр (утечка владения) | timer/Timer1.cpp | release в end() до сброса currentClient |
+| ✅ | P0-7 | реестр tmr не под гейтом: 3 Б SRAM всегда (INV-09) | TimerCommon.h/.cpp, PwmCommon.h, Timer1.cpp | флаг F_USE_TIMER_ARBITER |
 
 **Критерий готовности:** дефолтный скетч с Fast_nano_core.h собирается; Pwm1 выдаёт
 корректную частоту/скважность на железе; конфликт Pulse+Pwm1 на Timer1 отлавливается.

@@ -76,7 +76,7 @@
 | D60 | Timer0 begin при владении ядра | begin отказывает; takeover явный; restoreArduino возвращает wiring.c | защита millis | Timer0 |
 | D61 | PhaseCorrect период = 2·TOP | periodTicks 510/1022/2046, не TOP+1 | корректная частота | INV-15 |
 | D62 | нужен рантаймовый арбитраж Timer1 | Timer1::acquire(Client), 1 байт | advisory-арбитраж | P0-4 |
-| D69 | реестр внутри Timer1 дублировался бы | tmr::acquire — общий реестр, 3 Б на три таймера | ⚠️ не реализован | P0-4 |
+| D69 | реестр внутри Timer1 дублировался бы | tmr::acquire — общий реестр в TimerCommon.cpp, 3 Б; Timer1::acquire делегирует | ✅ реализован (P0-4); гейт F_USE_TIMER_ARBITER | C-TIMER-T1 |
 
 ## Группа: ШИМ
 

@@ -158,6 +158,7 @@ inline uint32_t usToTicks(uint32_t us, Clock c) {
 // Общий реестр владельцев таймеров (D69): 3 байта SRAM на три таймера.
 // Advisory: драйверы Timer0/1/2 владение не заявляют, потребитель обязан
 // захватывать. Реестр не трогает регистры — только фиксирует договорённость.
+#if F_USE_TIMER_ARBITER
 enum class Client : uint8_t {
     None = 0, Generic, Pulse, Pwm, Servo, Stepper, Timer, User
 };
@@ -173,6 +174,7 @@ Result acquire(uint8_t n, Client c);
 void release(uint8_t n, Client c);
 // Текущий владелец (None, если свободен).
 Client ownerOf(uint8_t n);
+#endif  // F_USE_TIMER_ARBITER
 
 // ---------------------------- legacy-алиасы --------------------------------
 // Прежний порядок Timer0::Out был Disable/Normal/Inverted/Toggle.
