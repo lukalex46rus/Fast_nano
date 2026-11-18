@@ -38,6 +38,9 @@
 //    - Зависимости проверяются в конце файла через #error, а не молчаливым
 //      обнулением: несовместимая конфигурация не должна собираться.
 //    - Префикс F_USE_ исторический; новые макросы библиотеки идут с FN_.
+//    - Зачаточные слои L7/L9/L10 закрыты по DEP-9: их API не согласован с контрактами
+//      (TMC2209 требует несуществующий bus/Bus.h и тип BusError; MCP23017/Lcd1602I2c
+//      вызывают I2c::write(byte) вместо write(ptr,len)). Открывать после этапа 3.
 //
 //  ПРИМЕР (релиз: минимум диагностики и тяжёлых модулей)
 //    #define FN_DEBUG 0
@@ -145,16 +148,16 @@
 #define F_USE_SERVO 1
 #endif
 #ifndef F_USE_LCD
-#define F_USE_LCD 1
+#define F_USE_LCD 0
 #endif
 #ifndef F_USE_STEPPER
-#define F_USE_STEPPER 1
+#define F_USE_STEPPER 0
 #endif
 #ifndef F_USE_KEYPAD
 #define F_USE_KEYPAD 1
 #endif
 #ifndef F_USE_OLED
-#define F_USE_OLED 1
+#define F_USE_OLED 0
 #endif
 #ifndef F_USE_GFX
 #define F_USE_GFX 1
@@ -198,7 +201,7 @@
 #define F_USE_PID_AUTOTUNE 1
 #endif
 #ifndef F_USE_MENU
-#define F_USE_MENU 1
+#define F_USE_MENU 0
 #endif
 #ifndef F_USE_STRINGN
 #define F_USE_STRINGN 1
@@ -209,13 +212,13 @@
 
 // ------------------------------ драйверы и математика ----------------------
 #ifndef F_USE_DRV8825
-#define F_USE_DRV8825 F_USE_STEPPER
+#define F_USE_DRV8825 0
 #endif
 #ifndef F_USE_TMC2209
-#define F_USE_TMC2209 (F_USE_STEPPER && F_USE_UART)
+#define F_USE_TMC2209 0
 #endif
 #ifndef F_USE_MCP23017
-#define F_USE_MCP23017 F_USE_I2C
+#define F_USE_MCP23017 0
 #endif
 #ifndef F_USE_MATH
 #define F_USE_MATH 1
