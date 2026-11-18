@@ -94,10 +94,14 @@ struct Traits1 {
     static constexpr bool hasIcr = true;
     static constexpr bool lockedByCore = false;
     static constexpr uint8_t prescaleCount = 5;
+    static constexpr uint8_t timerIndex = 1;
 
     // TCCR1B: бит 7 ICNC1, бит 6 ICES1, бит 5 reserved — сохраняем.
     // Биты 4:3 WGM13/WGM12 перезаписываем.
     static constexpr uint8_t tccrBKeep = 0xE0;
+		
+		// WGM13:12 живут в битах 4:3 TCCR1B; упакованы в битах 3:2 значения wgmBits.
+    static constexpr uint8_t wgmBMask = 0x0Cu;
 
     static volatile uint8_t& tccrA() { return TCCR1A; }
     static volatile uint8_t& tccrB() { return TCCR1B; }

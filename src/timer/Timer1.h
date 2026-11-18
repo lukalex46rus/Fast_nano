@@ -127,7 +127,7 @@ public:
         PhaseCorrectTop     ///< TOP = ICR1
     };
 
-    enum class Client : uint8_t { None = 0, Generic, Pulse, Pwm, Servo, Stepper, User };
+    enum class Client : uint8_t { None = 0, Generic, Pulse, Pwm, Servo, Stepper, Timer, User };
 
     // --- арбитраж между потребителями (advisory) ---
     static Result acquire(Client c);

@@ -76,6 +76,7 @@ public/internal API, зависимостям и статусу готовнос
 | Модуль | Ответственность | Public API | Зависимости | Статус |
 |---|---|---|---|---|
 | TimerCommon.h | словарь таймеров | Clock/Out/comBits/bestClock/ticksToUs | Types | 🔧 (G-2 kClocks RAM) |
+| TimerCommon.cpp | реестр владельцев таймеров | tmr::acquire/release/ownerOf | TimerCommon, Atomic | ✅ |
 | Tick.cpp/h | база времени | millis/micros/elapsed/expired/Timeout/Stopwatch | Types,Atomic,Resources,Arduino | 🔧 (G-1 Stopwatch) |
 | Timer0.cpp/h | драйвер Timer0 | begin/takeover/restoreArduino | TimerCommon,Registers,Resources | 🔧 |
 | Timer1.cpp/h | драйвер Timer1 + арбитраж | acquire/release/takeover/setMode/setPeriodUs/capture | TimerCommon,Registers,Resources | 🔧 (G-7 setMode CS) |

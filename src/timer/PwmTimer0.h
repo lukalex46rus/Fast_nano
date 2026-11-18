@@ -74,10 +74,13 @@ struct Traits0 {
     static constexpr bool hasIcr = false;
     static constexpr bool lockedByCore = true;
     static constexpr uint8_t prescaleCount = 5;
+		static constexpr uint8_t timerIndex = 0;
 
     // У Timer0 биты 7:6 TCCR0B — FOC0A/FOC0B (write-only, читаются 0),
-    // бит 4 — WGM02, бит 3 — reserved. Сохранять нечего: WGM перезаписываем.
+    // бит 3 — WGM02, биты 5:4 — reserved. Сохранять нечего: WGM перезаписываем.
     static constexpr uint8_t tccrBKeep = 0x00;
+    // WGM02 живёт в бите 3 TCCR0B; упакован в бите 2 значения wgmBits.
+    static constexpr uint8_t wgmBMask = 0x04u;
 
     static volatile uint8_t& tccrA() { return TCCR0A; }
     static volatile uint8_t& tccrB() { return TCCR0B; }

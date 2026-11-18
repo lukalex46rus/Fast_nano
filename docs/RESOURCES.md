@@ -35,7 +35,7 @@
 | пул irq (FN_IRQ_SLOTS=8) | 40 Б + 6 на INT | 8×5 + ext | ✅ |
 | LinearRegression | 17 Б | 4×float + bool | ✅ (float-путь) |
 | Crash Record (.noinit) | 12 Б | magic+boots+flags+code+line+expr+file+sum | ✅ |
-| tmr::acquire реестр | 3 Б | по 1 Б на таймер | ⚠️ не реализован (P0-4) |
+| tmr::acquire реестр | 3 Б | по 1 Б на таймер (TimerCommon.cpp) | ✅ |
 
 Числа flash по модулям — из шапок файлов, сводятся после этапа 3 (avr-size).
 

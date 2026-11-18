@@ -58,8 +58,8 @@
 
 #include <avr/interrupt.h>
 
-// Владение заявляет потребитель, а не драйвер Timer1.
-FN_CLAIM_TIMER(1, FN_OWNER_PULSE);
+// Timer1 — разделяемый ресурс: владение устройством только в рантайме
+// (Timer1::acquire). Векторы CAPT/OVF определяет этот файл — заявляем их.
 FN_CLAIM_VECTOR(Timer1Capt, FN_OWNER_PULSE);
 FN_CLAIM_VECTOR(Timer1Ovf, FN_OWNER_PULSE);
 

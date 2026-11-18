@@ -107,14 +107,6 @@
 #define FN_BYTES_TO_WORDS(n) (((n) + 1u) / 2u)
 
 namespace fn {
-namespace detail {
-// Заведомо ложное утверждение, зависящее от шаблона: срабатывает только
-// при инстанцировании, а не при разборе шаблона.
-template <typename>
-struct AlwaysFalse {
-    static constexpr bool value = false;
-};
-}  // namespace detail
 
 // Число элементов C-массива. Для указателя не скомпилируется — это намеренно.
 template <typename T, size_t N>

@@ -79,16 +79,17 @@ inline void applyTopMode(uint32_t n, uint8_t cs) {
 
 // ============================ арбитраж =====================================
 Result Timer1::acquire(Client c) {
+    // Единый реестр: Pulse/Pwm/Servo/Stepper видят один и тот же владелец.
+    const tmr::Client tc = static_cast<tmr::Client>(static_cast<uint8_t>(c));
+    const Result r = tmr::acquire(1u, tc);
+    if (!ok(r)) return timer1_detail::fail(r);
     AtomicBlock lock;
-    if (timer1_detail::currentClient != Client::None &&
-        timer1_detail::currentClient != c) {
-        return timer1_detail::fail(Result::Busy);
-    }
     timer1_detail::currentClient = c;
     return timer1_detail::done();
 }
 
 void Timer1::release(Client c) {
+    tmr::release(1u, static_cast<tmr::Client>(static_cast<uint8_t>(c)));
     AtomicBlock lock;
     if (timer1_detail::currentClient == c) timer1_detail::currentClient = Client::None;
 }

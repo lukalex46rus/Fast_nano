@@ -15,6 +15,7 @@
 //    static constexpr bool hasIcr;            ICR как TOP (только Timer1)
 //    static constexpr bool lockedByCore;      таймер принадлежит ядру Arduino
 //    static constexpr uint8_t tccrBKeep;      маска сохраняемых битов TCCRnB
+//    static constexpr uint8_t wgmBMask;       маска B-части WGM в упаковке (<<1 в регистр)
 //    static constexpr uint8_t prescaleCount;  число доступных делителей
 //    static volatile uint8_t& tccrA();
 //    static volatile uint8_t& tccrB();
@@ -89,6 +90,7 @@
 #include "../core/Types.h"
 #include "../core/Atomic.h"
 #include "Pwm.h"
+#include "TimerCommon.h"
 
 #include <stdint.h>
 
@@ -105,6 +107,12 @@ public:
     // ------------------------------ запуск ---------------------------------
     static Result begin(PwmMode m) {
         if (Tr::lockedByCore && modeUsesOcrATop(m)) return Result::Unsupported;
+
+        // Разделяемый таймер: захватываем до любой записи регистров.
+        if (!Tr::lockedByCore) {
+            const Result a = tmr::acquire(Tr::timerIndex, tmr::Client::Pwm);
+            if (!ok(a)) return a;
+        }
 
         AtomicBlock lock;
         applyWgm(m);
@@ -127,6 +135,7 @@ public:
         Tr::tccrA() = uint8_t(Tr::tccrA() & 0x0Fu);   // COM = 0, WGM сохранить
         s_owned = false;
         s_cs = 0;
+        if (!Tr::lockedByCore) tmr::release(Tr::timerIndex, tmr::Client::Pwm);
     }
 
     static PwmMode mode() { return s_mode; }
@@ -135,6 +144,10 @@ public:
     // ------------------------------ частота --------------------------------
     static uint32_t setFrequency(uint32_t hz) {
         if (hz == 0 || Tr::lockedByCore) return 0;
+        if (!s_owned) {
+            const Result a = tmr::acquire(Tr::timerIndex, tmr::Client::Pwm);
+            if (!ok(a)) return 0;
+        }
 
         const bool phase = modeIsPhase(s_mode);
         const uint32_t maxTop = fixedTop();
@@ -249,14 +262,19 @@ private:
 
     static constexpr uint32_t fixedTop() { return (uint32_t(1) << Tr::bits) - 1u; }
 
-    static uint8_t wgmB(PwmMode m) { return uint8_t((Tr::wgmBits(m) >> 2) & 0x03u); }
+		// B-часть WGM: упакованные биты [3:2] сдвигаются на позицию регистра.
+    // Timer1: WGM13:12 -> биты 4:3 (сдвиг 1 от маски 0x0C).
+    // Timer0/2: WGMn2 -> бит 3 (сдвиг 1 от маски 0x04).
+    static uint8_t wgmB(PwmMode m) {
+        return uint8_t((Tr::wgmBits(m) & Tr::wgmBMask) << 1);
+    }
 
-    // Записать WGM, сохранив COM (7:4) в A и значимые биты в B.
+    // Записать WGM, сохранив COM (7:4) в A, значимые биты в B и CS (2:0).
     static void applyWgm(PwmMode m) {
         const uint8_t w = Tr::wgmBits(m);
         Tr::tccrA() = uint8_t((Tr::tccrA() & 0xF0u) | (w & 0x03u));
         Tr::tccrB() = uint8_t((Tr::tccrB() & Tr::tccrBKeep) |
-                              ((w >> 2) & 0x03u) | (Tr::tccrB() & 0x07u));
+                              wgmB(m) | (Tr::tccrB() & 0x07u));
     }
 
     // Кламп до TOP, а не до TOP+1: при TOP=MAX значение 256 не влезает

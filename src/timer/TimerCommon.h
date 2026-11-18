@@ -61,6 +61,7 @@
 #include "../core/Config.h"
 #include "../core/Compiler.h"
 #include "../core/Types.h"
+#include "../core/Atomic.h"
 
 #include <stdint.h>
 
@@ -152,6 +153,26 @@ inline uint32_t usToTicks(uint32_t us, Clock c) {
     if (d == 0) return 0;
     return (us * TicksPerUs) / d;
 }
+
+// ---------------------------- арбитраж потребителей ------------------------
+// Общий реестр владельцев таймеров (D69): 3 байта SRAM на три таймера.
+// Advisory: драйверы Timer0/1/2 владение не заявляют, потребитель обязан
+// захватывать. Реестр не трогает регистры — только фиксирует договорённость.
+enum class Client : uint8_t {
+    None = 0, Generic, Pulse, Pwm, Servo, Stepper, Timer, User
+};
+
+namespace detail {
+// Один байт на таймер; volatile не нужен — доступ под AtomicBlock.
+extern uint8_t owner[3];
+}  // namespace detail
+
+// Захват таймера n (0/1/2). Повторный захват тем же клиентом — Ok.
+Result acquire(uint8_t n, Client c);
+// Освобождение: только текущий владелец может отпустить.
+void release(uint8_t n, Client c);
+// Текущий владелец (None, если свободен).
+Client ownerOf(uint8_t n);
 
 // ---------------------------- legacy-алиасы --------------------------------
 // Прежний порядок Timer0::Out был Disable/Normal/Inverted/Toggle.

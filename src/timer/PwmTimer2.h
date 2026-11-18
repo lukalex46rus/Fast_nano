@@ -78,10 +78,12 @@ struct Traits2 {
     static constexpr bool hasIcr = false;
     static constexpr bool lockedByCore = false;
     static constexpr uint8_t prescaleCount = 7;
+    static constexpr uint8_t timerIndex = 2;
 
     // TCCR2B: биты 7:6 FOC2A/FOC2B (write-only), бит 4 reserved,
     // бит 3 WGM22 — перезаписываем. Сохранять нечего.
-    static constexpr uint8_t tccrBKeep = 0x00;
+    // WGM22 живёт в бите 3 TCCR2B; упакован в бите 2 значения wgmBits.
+    static constexpr uint8_t wgmBMask = 0x04u;
 
     static volatile uint8_t& tccrA() { return TCCR2A; }
     static volatile uint8_t& tccrB() { return TCCR2B; }

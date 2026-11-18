@@ -63,14 +63,16 @@
 //    указателей во flash, вырезается линкером, если не вызывается.
 //
 //  ПРИМЕР
-//    // В pin/Pulse.cpp:
-//    FN_CLAIM_VECTOR(TIMER1_CAPT, FN_OWNER_PULSE);
-//    FN_CLAIM_VECTOR(TIMER1_OVF,  FN_OWNER_PULSE);
-//    FN_CLAIM_TIMER(1, FN_OWNER_PULSE);
+//    // В pin/Pulse.cpp (векторы, которые определяет сам модуль):
+//    FN_CLAIM_VECTOR(Timer1Capt, FN_OWNER_PULSE);
+//    FN_CLAIM_VECTOR(Timer1Ovf,  FN_OWNER_PULSE);
 //
-//    // Если Servo уже занял Timer1 -> static_assert с текстом:
-//    // "Fast_nano: вектор TIMER1_CAPT занят владельцем 8, заявлен 14"
-//    // Освободить: в этом файле FN_TIMER1_CAPT_OWNER = FN_OWNER_PULSE
+//    // Timer1 целиком — разделяемый: заявка устройства НЕ ставится,
+//    // владение берётся в рантайме: Timer1::acquire(Client::Pulse).
+//
+//    // Если вектор занят другим -> static_assert с текстом:
+//    // "Fast_nano: вектор Timer1Capt занят владельцем 8, заявлен 14"
+//    // Освободить: FN_TIMER1_CAPT_OWNER = FN_OWNER_PULSE централизованно.
 //
 //  ЗАВИСИМОСТИ: Config.h, Compiler.h, Types.h
 // ============================================================================
@@ -132,10 +134,10 @@
 #endif
 
 #ifndef FN_TIMER1_CAPT_OWNER
-#define FN_TIMER1_CAPT_OWNER FN_OWNER_NONE
+#define FN_TIMER1_CAPT_OWNER FN_OWNER_PULSE
 #endif
 #ifndef FN_TIMER1_OVF_OWNER
-#define FN_TIMER1_OVF_OWNER FN_OWNER_NONE
+#define FN_TIMER1_OVF_OWNER FN_OWNER_PULSE
 #endif
 #ifndef FN_TIMER1_COMPA_OWNER
 #define FN_TIMER1_COMPA_OWNER FN_OWNER_NONE
@@ -155,25 +157,25 @@
 #endif
 
 #ifndef FN_USART_RX_OWNER
-#define FN_USART_RX_OWNER FN_OWNER_NONE
+#define FN_USART_RX_OWNER FN_OWNER_UART
 #endif
 #ifndef FN_USART_UDRE_OWNER
 #define FN_USART_UDRE_OWNER FN_OWNER_NONE
 #endif
 #ifndef FN_SPI_STC_OWNER
-#define FN_SPI_STC_OWNER FN_OWNER_NONE
+#define FN_SPI_STC_OWNER FN_OWNER_SPI
 #endif
 #ifndef FN_TWI_OWNER
-#define FN_TWI_OWNER FN_OWNER_NONE
+#define FN_TWI_OWNER FN_OWNER_I2C
 #endif
 #ifndef FN_ADC_OWNER
-#define FN_ADC_OWNER FN_OWNER_NONE
+#define FN_ADC_OWNER FN_OWNER_ADC
 #endif
 #ifndef FN_ANALOG_COMP_OWNER
-#define FN_ANALOG_COMP_OWNER FN_OWNER_NONE
+#define FN_ANALOG_COMP_OWNER FN_OWNER_ADC
 #endif
 #ifndef FN_WDT_OWNER
-#define FN_WDT_OWNER FN_OWNER_NONE
+#define FN_WDT_OWNER FN_OWNER_USER
 #endif
 
 // ---------------------------- таймеры целиком ------------------------------
@@ -184,7 +186,7 @@
 #define FN_TIMER1_DEVICE FN_OWNER_NONE
 #endif
 #ifndef FN_TIMER2_DEVICE
-#define FN_TIMER2_DEVICE FN_OWNER_NONE
+#define FN_TIMER2_DEVICE FN_OWNER_TIMER2
 #endif
 
 // ---------------------------- проверка владения ----------------------------
