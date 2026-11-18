@@ -132,7 +132,10 @@ public:
         return Result::Ok;
     }
 
-    static void end() {
+     static void end() {
+        // Без владения не трогаем регистры: таймер может держать другой
+        // потребитель (Pulse/Servo/Stepper), и сброс COM испортит его выходы.
+        if (!s_owned) return;
         AtomicBlock lock;
         Tr::tccrA() = uint8_t(Tr::tccrA() & 0x0Fu);   // COM = 0, WGM сохранить
         s_owned = false;
