@@ -74,13 +74,13 @@ Types ← Compiler ← Config ← ConfigCheck/Features
 Atomic ← Types; Registers ← {Types, Atomic, Assert}
 Bits/BitPack ← Types; Tables ← Types (определения resultName/ownerName)
 Crc ← Types; Progmem ← Types
-Resources ← Types; Irq ← {Pin, Board, Resources, Atomic}
+Resources ← Types; Irq ← {Board, Registers, Resources, Atomic, Types}
 TimerCommon ← Types (ни от кого больше); Tick ← {Types, Atomic, Resources, Arduino}
 Timer0/1/2 ← {TimerCommon, Registers, Resources, Atomic}; Watchdog ← {Resources, Crash}
 PwmCommon ← {TimerCommon, Pwm, Registers, Atomic}; PwmTimer0/1/2 ← PwmCommon
-BusContract ← Types; Buffer ← Types; Uart/I2c/Spi ← {BusContract, Buffer, Registers, Resources, Atomic, Tick}
+BusContract ← {Types, Compiler, Progmem, Tick}; Buffer ← Types; Uart/I2c/Spi ← {BusContract, Buffer, Registers, Resources, Atomic, Tick}
 Eeprom ← {Types, Atomic, Crc}; EepromStore ← {Eeprom, Crc}
-Power ← {Registers, Resources, Atomic}; Adc ← {Registers, Resources, Atomic, Tick}; AC ← Adc-подсистема
+Power ← {Types, Atomic, Resources}; Adc ← {Types, Atomic, Resources, Tick}; AC ← {Types, Atomic, Resources}
 
 Выявленные проблемы as-is:
 - AlwaysFalse дублируется Compiler↔Types (P0-1, INV-22).

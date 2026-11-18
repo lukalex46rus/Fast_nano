@@ -21,7 +21,6 @@ public/internal API, зависимостям и статусу готовнос
 | Types.h | типы-валюта | Pin?/Result/трейты/resultName | Compiler | ❌ AlwaysFalse дубль (P0-1) |
 | Crash.cpp/h | .noinit запись сбоя, halt/forceReset | record/halt/forceReset/policy/resetFlags/boots | Types | 🔧 |
 | Assert.h | проверки предусловий | FN_ASSERT/FN_VERIFY/setAssertHandler | Crash | 🔧 |
-| Reset.cpp/h | причина сброса, перезапуск | cause/flags/soft/halt/toBootloader | Crash | 🔧 |
 
 ## L1 — доступ к железу
 
@@ -30,12 +29,17 @@ public/internal API, зависимостям и статусу готовнос
 | Atomic.h | критические секции | AtomicBlock/atomicRead*/Write*/Modify/Exchange/Counter | Types | 🔧 |
 | Registers.h | GPIO без таблиц | regs::sfr/read/write/mask/mode/toggle/FastPin/save/restore | Types,Atomic,Assert | 🔧 (G-6 FastPin) |
 | Memory.cpp/h | диагностика SRAM | stackPaint/stackUsed/freeRam/report | Atomic | 🔧 |
+| Reset.cpp/h | причина сброса, перезапуск | cause/flags/soft/halt/toBootloader | Crash, Atomic | 🔧 |
 
 ## L2 — битовый слой
 
 | Модуль | Ответственность | Public API | Зависимости | Статус |
 |---|---|---|---|---|
-| BitMask/Scan/Count/Ops/Shift/Reverse | битовые операции | mask/ctz/clz/popcount/shift/reverse | Types | 🔧 |
+| BitMask.h | маски битов | mask/maskRange | Types | 🔧 |
+| BitScan.h | поиск битов | ctz/clz/ffs | Types | 🔧 |
+| BitCount.h | подсчёт битов | popcount/parity | Types | 🔧 |
+| BitOps.h | операции над битами | set/clear/toggle/test | Types | 🔧 |
+| BitShift.h/BitReverse.h | сдвиг/реверс | shiftLeft/shiftRight/reverseBitOrder | Types | 🔧 |
 | BitPack.h | битовые массивы CRTP | BitPack<N>/BitPackWide/normalize | Types | 🔧 |
 | BitSet.h/BitFlags.h | множества бит/флаги | BitSet/Flags | Types | 🔧 |
 | Bits.h | фасад битового слоя | агрегатор | Bit* | 🔧 |
@@ -91,7 +95,7 @@ public/internal API, зависимостям и статусу готовнос
 
 | Модуль | Ответственность | Public API | Зависимости | Статус |
 |---|---|---|---|---|
-| BusContract.h | контракт шины | writeP/waitUntil/transferFill<Bus> | Types | 🔧 |
+| BusContract.h | контракт шины | writeP/waitUntil/transferFill<Bus> | Types, Compiler, Progmem, Tick | 🔧 |
 | Buffer.h | SPSC ring buffer | RingBuffer<T,N>/push/pop/available/dropped | Types | 🔧 |
 | Uart.cpp/h (+Soft) | USART0/soft TX | begin/end/write/read/transfer/available/flush | BusContract,Buffer,Registers,Resources,Tick | ❌ claim UsartRx (P0-2) |
 | I2c.cpp/h (+Soft) | TWI/soft I2C | begin/end/start/stop/write/read/recover/scan | BusContract,Registers,Resources,Tick | ❌ claim Twi (P0-2) |
@@ -127,6 +131,15 @@ public/internal API, зависимостям и статусу готовнос
 | LinearRegression.h | линейная регрессия | add/fit/slope/predict | Types | 🔧 |
 | FixedPoint.h | фикс. точка Q | Fixed8/16/24/арифметика | Types | 🔧 |
 | MathUtils.h | целочисленная математика | isqrt32/isqrt64/gcd/lcm | Types | 🔧 (не в umbrella) |
+
+## L7 (предконтракт)
+
+| Модуль | Ответственность | Public API | Зависимости | Статус |
+|---|---|---|---|---|
+| core/LogicContract.h | фиксация формы API слоя logic: Task/Filter/Periodic | контракты tick/active/begin/end, update/value/reset, Periodic | Types, Tick | 🌱 предконтракт |
+
+Примечание: файл задаёт контракты до реализации модулей. При наполнении CONTRACTS.md §2.16
+(L7) его содержимое поглощается туда; до тех пор действует правило DEP-9 (за гейтом F_USE_LOGIC).
 
 ## L7 / L9 / L10 — зачаточные (вне текущей волны)
 
