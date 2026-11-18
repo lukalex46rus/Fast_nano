@@ -150,9 +150,10 @@ public/internal API, зависимостям и статусу готовнос
 | L9 display | Hd44780, Lcd1602(+I2c/+lcd/*), OledDisplay(+oled/*), GraphicsDisplay(+gfx/*), DisplayMenu(+menu/*), char/* | 🌱 |
 | L10 device/motor/input | ShiftRegister, Servo, MCP23017, StepperDriver, A4988, DRV8825, TMC2209, Keys, Keypad4x4(+Interrupt) | 🌱 |
 
-Гейты закрыты (P0-10): F_USE_STEPPER/TMC2209/DRV8825/MCP23017/LCD/MENU/OLED = 0.
-Причина: API слоёв не согласован с контрактами шин (G-10/G-11). Открывать по мере
-миграции этапа 3, по одному модулю с проверкой сборки.
+Гейты закрыты (P0-10/P0-20): F_USE_LOGIC/SERVO/KEYPAD/GFX/CHAR/STEPPER/TMC2209/
+DRV8825/MCP23017/LCD/MENU/OLED = 0. Причина: API слоёв не согласован с контрактами
+pin/timer/шин (G-10/G-11/G-12). Открывать по одному модулю после миграции этапа 3.
+Исключение: ShiftRegister приведён к BoardPin<N> и включён (F_USE_SHIFTREG=1).
 
 
 Замечания инвентаризации:

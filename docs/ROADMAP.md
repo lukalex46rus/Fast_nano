@@ -47,6 +47,11 @@
 | ✅ | P0-13 | Crc::Engine::byte() конфликтует с макросом byte(x) (INV-10) | core/Crc.h | переименовать в step() |
 | ✅ | P0-14 | fn::math::abs конфликтует с макросом abs(x) (INV-10) | math/FixedPoint.h | переименовать в absVal() |
 | ✅ | P0-15 | GraphicsDisplay::swap конфликтует с макросом swap(a,b) (INV-10) | display/GraphicsDisplay.h | переименовать в swapValues() |
+| ✅ | P0-16 | clamp используется до объявления в mapClamped | math/Mapping.h | перенести определение clamp выше mapClamped |
+| ✅ | P0-17 | divFloor/divCeil/mapFloatClamped не C++11-constexpr (локальные переменные) | math/MathUtils.h, math/Mapping.h | переписать через тернарные выражения |
+| ✅ | P0-18 | ShiftRegister использует Pin<N> (не шаблон) вместо BoardPin<N>; include без гейта | device/ShiftRegister.h, Fast_nano.h, Features.h | BoardPin<N> + флаг F_USE_SHIFTREG |
+| ✅ | P0-19 | GraphicsDisplay: определение swap переименовано, вызовы — нет | display/GraphicsDisplay.h | 6 вызовов → swapValues |
+| ✅ | P0-20 | Зачаточные L7/L9/L10 открыты: Pin<N>, PinRef(n,uint8_t), Timer2::Mode::CTC | core/Features.h | F_USE_LOGIC/SERVO/KEYPAD/GFX/CHAR = 0 |
 
 **Критерий готовности:** дефолтный скетч с Fast_nano_core.h собирается; Pwm1 выдаёт
 корректную частоту/скважность на железе; конфликт Pulse+Pwm1 на Timer1 отлавливается.
@@ -143,3 +148,5 @@
 | G-9 | display/Lcd1602.h ↔ lcd/Utf8Lcd1602.h | цикл include | разорвать (вынести общий тип)
 | G-10 | motor/TMC2209.h/.cpp | BusError не определён; Uart::read()/flush() без аргументов; Bus.h отсутствует | миграция на fn::Result + BusContract (этап 3, L10) |
 | G-11 | device/MCP23017.cpp:76,90; display/Lcd1602I2c.cpp:18 | I2c::write(byte) — сигнатура write(ptr,len) | миграция на текущий API шин (этап 3, L9/L10) |
+| G-12 | logic/Button.h, logic/Encoder.h, input/Keys.h, input/Keypad4x4*.h | Pin<N> вместо BoardPin<N>; PinRef(n,uint8_t) вместо Mode; Timer2::Mode::CTC/Clock | миграция на актуальный API pin/timer (этап 3, L7/L10) |
+| G-13 | math/MathUtils.h, math/Mapping.h | constexpr-функции с локальными переменными (C++11 запрещает) | проверить остальные constexpr на соответствие C++11 |

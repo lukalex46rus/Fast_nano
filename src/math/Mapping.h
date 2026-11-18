@@ -81,6 +81,12 @@ inline constexpr int32_t hiOf(int32_t a, int32_t b) { return a < b ? b : a; }
 
 }  // namespace detail
 
+// ---------------------------- ограничение ----------------------------------
+// Объявлено ДО mapClamped: иначе имя не найдено при разборе шаблона.
+template <typename T>
+inline constexpr T clamp(T v, T lo, T hi) {
+    return v < lo ? lo : (v > hi ? hi : v);
+}
 // ---------------------------- целочисленные --------------------------------
 inline constexpr int32_t map(int32_t x, int32_t inMin, int32_t inMax,
                              int32_t outMin, int32_t outMax) {
@@ -140,17 +146,14 @@ inline constexpr float mapFloat(float x, float inMin, float inMax,
 
 inline constexpr float mapFloatClamped(float x, float inMin, float inMax,
                                        float outMin, float outMax) {
-    const float lo = inMin < inMax ? inMin : inMax;
-    const float hi = inMin < inMax ? inMax : inMin;
-    return mapFloat(x < lo ? lo : (x > hi ? hi : x), inMin, inMax, outMin, outMax);
+    return mapFloat(x < (inMin < inMax ? inMin : inMax)
+                        ? (inMin < inMax ? inMin : inMax)
+                        : (x > (inMin < inMax ? inMax : inMin)
+                               ? (inMin < inMax ? inMax : inMin) : x),
+                    inMin, inMax, outMin, outMax);
 }
 
 // ---------------------------- ограничение ----------------------------------
-template <typename T>
-inline constexpr T clamp(T v, T lo, T hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
-}
-
 inline constexpr bool inRange(int32_t x, int32_t a, int32_t b) {
     return a <= b ? (x >= a && x <= b) : (x >= b && x <= a);
 }

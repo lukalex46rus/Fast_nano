@@ -14,12 +14,12 @@ enum Order : uint8_t { MSB_FIRST = 1, LSB_FIRST = 0 };
 template <uint8_t DAT, uint8_t CLK, uint8_t ORDER = MSB_FIRST>
 inline void sendByte(uint8_t data, uint8_t delayUs = 0) {
     for (uint8_t i = 0; i < 8; i++) {
-        if (ORDER == MSB_FIRST) { Pin<DAT>::write(data & 0x80); data <<= 1; }
-        else                    { Pin<DAT>::write(data & 0x01); data >>= 1; }
+        if (ORDER == MSB_FIRST) { BoardPin<DAT>::write(data & 0x80); data <<= 1; }
+        else                    { BoardPin<DAT>::write(data & 0x01); data >>= 1; }
         if (delayUs) fn::delayUs(delayUs);
-        Pin<CLK>::high();
+        BoardPin<CLK>::high();
         if (delayUs) fn::delayUs(delayUs);
-        Pin<CLK>::low();
+        BoardPin<CLK>::low();
     }
 }
 
@@ -34,14 +34,14 @@ inline uint8_t readByte(uint8_t delayUs = 0) {
     uint8_t v = 0;
     for (uint8_t i = 0; i < 8; i++) {
         if (ORDER == MSB_FIRST) v <<= 1;
-        if (Pin<DAT>::read()) {
+        if (BoardPin<DAT>::read()) {
             if (ORDER == MSB_FIRST) v |= 1;
             else                    v |= uint8_t(0x80 >> i);
         }
         if (delayUs) fn::delayUs(delayUs);
-        Pin<CLK>::high();
+        BoardPin<CLK>::high();
         if (delayUs) fn::delayUs(delayUs);
-        Pin<CLK>::low();
+        BoardPin<CLK>::low();
     }
     return v;
 }

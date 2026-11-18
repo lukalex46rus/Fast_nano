@@ -216,17 +216,15 @@ inline constexpr int32_t divRound(int32_t a, int32_t b) {
 }
 
 inline constexpr int32_t divFloor(int32_t a, int32_t b) {
-    if (b == 0) return 0;
-    const int32_t q = int32_t(a / b);
-    const int32_t r = int32_t(a % b);
-    return (r != 0 && ((r < 0) != (b < 0))) ? int32_t(q - 1) : q;
+    return b == 0 ? 0
+         : ((a % b != 0) && ((a % b < 0) != (b < 0))) ? int32_t(a / b - 1)
+                                                      : int32_t(a / b);
 }
 
 inline constexpr int32_t divCeil(int32_t a, int32_t b) {
-    if (b == 0) return 0;
-    const int32_t q = int32_t(a / b);
-    const int32_t r = int32_t(a % b);
-    return (r != 0 && ((r < 0) == (b < 0))) ? int32_t(q + 1) : q;
+    return b == 0 ? 0
+         : ((a % b != 0) && ((a % b < 0) == (b < 0))) ? int32_t(a / b + 1)
+                                                      : int32_t(a / b);
 }
 
 inline uint32_t roundUpTo(uint32_t v, uint32_t step) {

@@ -106,13 +106,13 @@ class GraphicsDisplay : public Print {
 
     // вертикальная линия
     void lineH(int y, int x0, int x1, uint8_t fill = GFX_FILL) {
-        swap(x0, x1);
+        swapValues(x0, x1);
         for (int x = x0; x <= x1; x++) dotSecure(x, y, fill);
     }
 
     // вертикальная линия
     void lineV(int x, int y0, int y1, uint8_t fill = GFX_FILL) {
-        swap(y0, y1);
+        swapValues(y0, y1);
         for (int y = y0; y <= y1; y++) dotSecure(x, y, fill);
     }
 
@@ -145,8 +145,8 @@ class GraphicsDisplay : public Print {
 
     // прямоугольник (x0, y0, x1, y1, fill)
     void rect(int x0, int y0, int x1, int y1, uint8_t fill = GFX_FILL) {
-        swap(y0, y1);
-        swap(x0, x1);
+        swapValues(y0, y1);
+        swapValues(x0, x1);
         if (fill == GFX_STROKE) {
             lineH(y0, x0 + 1, x1 - 1);
             lineH(y1, x0 + 1, x1 - 1);
@@ -164,8 +164,8 @@ class GraphicsDisplay : public Print {
 
     // скруглённый прямоугольник (x0, y0, x1, y1, fill)
     void roundRect(int x0, int y0, int x1, int y1, uint8_t fill = GFX_FILL) {
-        swap(y0, y1);
-        swap(x0, x1);
+        swapValues(y0, y1);
+        swapValues(x0, x1);
         if (fill == GFX_STROKE) {
             lineV(x0, y0 + 2, y1 - 2);
             lineV(x1, y0 + 2, y1 - 2);
