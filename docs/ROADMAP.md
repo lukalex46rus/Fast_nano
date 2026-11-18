@@ -41,6 +41,12 @@
 | ✅ | P0-5 | Traits2 потерял tccrBKeep при вставке wgmBMask (блокер сборки Pwm2) | timer/PwmTimer2.h | Восстановить tccrBKeep = 0x00 |
 | ✅ | P0-6 | Timer1::end не освобождал общий реестр (утечка владения) | timer/Timer1.cpp | release в end() до сброса currentClient |
 | ✅ | P0-7 | реестр tmr не под гейтом: 3 Б SRAM всегда (INV-09) | TimerCommon.h/.cpp, PwmCommon.h, Timer1.cpp | флаг F_USE_TIMER_ARBITER |
+| ✅ | P0-10 | Зачаточные слои L7/L9/L10 открыты гейтами и ломают сборку (bus/Bus.h, BusError, I2c::write(byte)) | core/Features.h | Закрыть F_USE_STEPPER/TMC2209/DRV8825/MCP23017/LCD/MENU/OLED = 0 (DEP-9)|
+| ✅ | P0-11 | TMC2209.h тянет несуществующий ../bus/Bus.h | motor/TMC2209.h:12 | Удалить include; BusError→Result алиас до миграции этапа 3 |
+| ✅ | P0-12 | Pin::bit() конфликтует с макросом Arduino bit(b) (INV-10) | core/Types.h, pin/Pin.h, pin/Board.h | переименовать в bitIndex() |
+| ✅ | P0-13 | Crc::Engine::byte() конфликтует с макросом byte(x) (INV-10) | core/Crc.h | переименовать в step() |
+| ✅ | P0-14 | fn::math::abs конфликтует с макросом abs(x) (INV-10) | math/FixedPoint.h | переименовать в absVal() |
+| ✅ | P0-15 | GraphicsDisplay::swap конфликтует с макросом swap(a,b) (INV-10) | display/GraphicsDisplay.h | переименовать в swapValues() |
 
 **Критерий готовности:** дефолтный скетч с Fast_nano_core.h собирается; Pwm1 выдаёт
 корректную частоту/скважность на железе; конфликт Pulse+Pwm1 на Timer1 отлавливается.
@@ -135,3 +141,5 @@
 | G-7 | timer/Timer1.cpp | setMode комментарий врёт про CS | поправить док/поведение |
 | G-8 | peripheral/Adc.cpp | Vcc-формула 1023 vs 1024 | 1024 |
 | G-9 | display/Lcd1602.h ↔ lcd/Utf8Lcd1602.h | цикл include | разорвать (вынести общий тип)
+| G-10 | motor/TMC2209.h/.cpp | BusError не определён; Uart::read()/flush() без аргументов; Bus.h отсутствует | миграция на fn::Result + BusContract (этап 3, L10) |
+| G-11 | device/MCP23017.cpp:76,90; display/Lcd1602I2c.cpp:18 | I2c::write(byte) — сигнатура write(ptr,len) | миграция на текущий API шин (этап 3, L9/L10) |

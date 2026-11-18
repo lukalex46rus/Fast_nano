@@ -124,13 +124,13 @@ struct Pin {
 
     constexpr uint8_t id() const { return packed; }
     constexpr Port port() const { return static_cast<Port>(packed >> 3); }
-    constexpr uint8_t bit() const { return static_cast<uint8_t>(packed & 7u); }
+    constexpr uint8_t bitIndex() const { return static_cast<uint8_t>(packed & 7u); }
     constexpr uint8_t mask() const { return static_cast<uint8_t>(1u << (packed & 7u)); }
 
     // PC7 на ATmega328P физически отсутствует.
     constexpr bool valid() const {
         return packed != PinIdInvalid && (packed >> 3) < PortCount &&
-               !(port() == Port::C && bit() == 7);
+               !(port() == Port::C && bitIndex() == 7);
     }
 
     constexpr bool operator==(const Pin& o) const { return packed == o.packed; }

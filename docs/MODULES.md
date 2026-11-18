@@ -150,6 +150,11 @@ public/internal API, зависимостям и статусу готовнос
 | L9 display | Hd44780, Lcd1602(+I2c/+lcd/*), OledDisplay(+oled/*), GraphicsDisplay(+gfx/*), DisplayMenu(+menu/*), char/* | 🌱 |
 | L10 device/motor/input | ShiftRegister, Servo, MCP23017, StepperDriver, A4988, DRV8825, TMC2209, Keys, Keypad4x4(+Interrupt) | 🌱 |
 
+Гейты закрыты (P0-10): F_USE_STEPPER/TMC2209/DRV8825/MCP23017/LCD/MENU/OLED = 0.
+Причина: API слоёв не согласован с контрактами шин (G-10/G-11). Открывать по мере
+миграции этапа 3, по одному модулю с проверкой сборки.
+
+
 Замечания инвентаризации:
 - logic/Menu.h ↔ display/menu/Menu.h — два Menu, развести ответственность (L7 vs L9).
 - logic/DelayTimer.h, PeriodicTimer.h, filters/* (кроме Kalman) не подключены umbrella.

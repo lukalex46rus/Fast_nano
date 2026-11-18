@@ -9,9 +9,12 @@
 #include "../pin/Pin.h"
 #include "../pin/PinRef.h"
 #include "../timer/Tick.h"
-#include "../bus/Bus.h"
 #include "../bus/Uart.h"
-
+// ВРЕМЕННО (этап 3, L10): слой писался под старый тип BusError.
+// По INV-21 многоисходные операции обязаны возвращать fn::Result.
+// Алиас сохраняет совместимость до миграции; значения Other/Timeout/Ok
+// отображаются на Result::Fail/Timeout/Ok.
+using BusError = Result;
 namespace fn {
 
 namespace Tmc2209Protocol {

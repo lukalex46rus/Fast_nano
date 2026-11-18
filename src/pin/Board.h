@@ -82,9 +82,9 @@ constexpr Pin boardPin(uint8_t n) {
 // Обратное преобразование. Нет соответствия -> 0xFF.
 constexpr uint8_t boardNumber(Pin p) {
     return !p.valid() ? uint8_t(0xFF)
-           : (p.port() == Port::D) ? uint8_t(p.bit())
-           : (p.port() == Port::B) ? ((p.bit() <= 5) ? uint8_t(p.bit() + 8) : uint8_t(0xFF))
-                                   : ((p.bit() <= 5) ? uint8_t(p.bit() + 14) : uint8_t(0xFF));
+           : (p.port() == Port::D) ? uint8_t(p.bitIndex())
+           : (p.port() == Port::B) ? ((p.bitIndex() <= 5) ? uint8_t(p.bitIndex() + 8) : uint8_t(0xFF))
+                                   : ((p.bitIndex() <= 5) ? uint8_t(p.bitIndex() + 14) : uint8_t(0xFF));
 }
 
 // A6/A7 (номера 20/21 в расширенной нумерации) — только ADC, цифрового порта нет.
@@ -96,9 +96,9 @@ constexpr bool hasPcint(Pin p) { return p.valid(); }
 // Линия внешнего прерывания: D2 -> 0, D3 -> 1, иначе -1.
 constexpr int8_t intLineOf(Pin p) {
     return (p.port() != Port::D) ? int8_t(-1)
-           : (p.bit() == 2)      ? int8_t(0)
-           : (p.bit() == 3)      ? int8_t(1)
-                                 : int8_t(-1);
+           : (p.bitIndex() == 2)   ? int8_t(0)
+           : (p.bitIndex() == 3)   ? int8_t(1)
+                                   : int8_t(-1);
 }
 
 }  // namespace fn

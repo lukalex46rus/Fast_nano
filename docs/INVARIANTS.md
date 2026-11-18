@@ -116,6 +116,8 @@ FN_CLAIM_TIMER запрещал всех потребителей сразу). �
 Утверждение: не использовать bit/bitRead/min/max/swap/byte/word как идентификаторы
 (препроцессор не знает namespace).
 Проверка: GREP объявлений с этими именами; компиляция с Arduino.h.
+Известные нарушения (закрыты P0-12…P0-15): Pin::bit→bitIndex, Crc::Engine::byte→step,
+fn::math::abs→absVal, GraphicsDisplay::swap→swapValues.
 
 ### INV-11 (R11). Нет идентификаторов _Заглавная
 Утверждение: имена вида _X зарезервированы стандартом во всех областях.

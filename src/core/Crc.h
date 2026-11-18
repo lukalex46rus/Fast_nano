@@ -18,7 +18,7 @@
 //    Crc32Std    uint32_t poly 0xEDB88320  LSB  init/xor 0xFFFFFFFF
 //
 //  API — движок
-//    E::byte(crc, b)            один байт
+//    E::step(crc, b)            один байт
 //    E::buf(crc, p, n)          блок из RAM;  p == nullptr -> crc без изменений
 //    E::bufP(crc, p, n)         блок из PROGMEM
 //    E::value_type              тип регистра
@@ -111,7 +111,7 @@ struct Engine {
     static constexpr uint8_t width = ::fn::detail::WidthOf<T>::value;
     static constexpr T topBit = T(T(1) << (width - 1u));
 
-    static T byte(T c, uint8_t b) {
+    static T step(T c, uint8_t b) {
         if (Reflected) {
             c = T(c ^ T(b));
             for (uint8_t k = 0; k < 8; ++k) {
@@ -130,7 +130,7 @@ struct Engine {
         if (p == nullptr) return c;
         const uint8_t* q = static_cast<const uint8_t*>(p);
         const uint8_t* end = q + n;
-        for (; q != end; ++q) c = byte(c, *q);
+        for (; q != end; ++q) c = step(c, *q);
         return c;
     }
 
@@ -138,7 +138,7 @@ struct Engine {
         if (p == nullptr) return c;
         const uint8_t* q = static_cast<const uint8_t*>(p);
         const uint8_t* end = q + n;
-        for (; q != end; ++q) c = byte(c, pgm_read_byte(q));
+        for (; q != end; ++q) c = step(c, pgm_read_byte(q));
         return c;
     }
 };
@@ -162,7 +162,7 @@ public:
     Stream() : _c(value_type(Init)) {}
 
     void reset() { _c = value_type(Init); }
-    void add(uint8_t b) { _c = E::byte(_c, b); }
+    void add(uint8_t b) { _c = E::step(_c, b); }    
     void add(const void* p, uint16_t n) { _c = E::buf(_c, p, n); }
     void addP(const void* p, uint16_t n) { _c = E::bufP(_c, p, n); }
 
@@ -174,27 +174,27 @@ private:
 };
 
 // ---------------------------- CRC-8 / SMBUS --------------------------------
-inline uint8_t crc8_update(uint8_t c, uint8_t b) { return Crc8Smbus::byte(c, b); }
+inline uint8_t crc8_update(uint8_t c, uint8_t b) { return Crc8Smbus::step(c, b); }
 inline uint8_t crc8_update(uint8_t c, const void* p, uint16_t n) { return Crc8Smbus::buf(c, p, n); }
 inline uint8_t crc8(const void* p, uint16_t n, uint8_t init = 0x00) { return Crc8Smbus::buf(init, p, n); }
 inline uint8_t crc8_P(const void* p, uint16_t n, uint8_t init = 0x00) { return Crc8Smbus::bufP(init, p, n); }
 
 // ---------------------------- CRC-8 / MAXIM-DOW ----------------------------
 // init = 0x00, финального XOR нет. Совместимо с DS18B20 / DS2401.
-inline uint8_t crc8_maxim_update(uint8_t c, uint8_t b) { return Crc8Maxim::byte(c, b); }
+inline uint8_t crc8_maxim_update(uint8_t c, uint8_t b) { return Crc8Maxim::step(c, b); }
 inline uint8_t crc8_maxim_update(uint8_t c, const void* p, uint16_t n) { return Crc8Maxim::buf(c, p, n); }
 inline uint8_t crc8_maxim(const void* p, uint16_t n, uint8_t init = 0x00) { return Crc8Maxim::buf(init, p, n); }
 inline uint8_t crc8_maxim_P(const void* p, uint16_t n, uint8_t init = 0x00) { return Crc8Maxim::bufP(init, p, n); }
 
 // ---------------------------- CRC-8 / NRSC-5 -------------------------------
 // Исторический полином 0x31 MSB-first, применялся в Eeprom.
-inline uint8_t crc8_poly31_update(uint8_t c, uint8_t b) { return Crc8Nrsc5::byte(c, b); }
+inline uint8_t crc8_poly31_update(uint8_t c, uint8_t b) { return Crc8Nrsc5::step(c, b); }
 inline uint8_t crc8_poly31_update(uint8_t c, const void* p, uint16_t n) { return Crc8Nrsc5::buf(c, p, n); }
 inline uint8_t crc8_poly31(const void* p, uint16_t n, uint8_t init = 0xFF) { return Crc8Nrsc5::buf(init, p, n); }
 inline uint8_t crc8_poly31_P(const void* p, uint16_t n, uint8_t init = 0xFF) { return Crc8Nrsc5::bufP(init, p, n); }
 
 // ---------------------------- CRC-16 / CCITT-FALSE -------------------------
-inline uint16_t crc16_ccitt_update(uint16_t c, uint8_t b) { return Crc16Ccitt::byte(c, b); }
+inline uint16_t crc16_ccitt_update(uint16_t c, uint8_t b) { return Crc16Ccitt::step(c, b); }
 inline uint16_t crc16_ccitt_update(uint16_t c, const void* p, uint16_t n) { return Crc16Ccitt::buf(c, p, n); }
 inline uint16_t crc16_ccitt(const void* p, uint16_t n, uint16_t init = 0xFFFF) { return Crc16Ccitt::buf(init, p, n); }
 inline uint16_t crc16_ccitt_P(const void* p, uint16_t n, uint16_t init = 0xFFFF) { return Crc16Ccitt::bufP(init, p, n); }
@@ -206,13 +206,13 @@ inline uint16_t crc16_xmodem_P(const void* p, uint16_t n, uint16_t init = 0x0000
 inline uint16_t crc16(const void* p, uint16_t n, uint16_t init = 0xFFFF) { return crc16_ccitt(p, n, init); }
 
 // ---------------------------- CRC-16 / MODBUS ------------------------------
-inline uint16_t crc16_modbus_update(uint16_t c, uint8_t b) { return Crc16Modbus::byte(c, b); }
+inline uint16_t crc16_modbus_update(uint16_t c, uint8_t b) { return Crc16Modbus::step(c, b); }
 inline uint16_t crc16_modbus_update(uint16_t c, const void* p, uint16_t n) { return Crc16Modbus::buf(c, p, n); }
 inline uint16_t crc16_modbus(const void* p, uint16_t n, uint16_t init = 0xFFFF) { return Crc16Modbus::buf(init, p, n); }
 inline uint16_t crc16_modbus_P(const void* p, uint16_t n, uint16_t init = 0xFFFF) { return Crc16Modbus::bufP(init, p, n); }
 
 // ---------------------------- CRC-32 ---------------------------------------
-inline uint32_t crc32_update(uint32_t c, uint8_t b) { return Crc32Std::byte(c, b); }
+inline uint32_t crc32_update(uint32_t c, uint8_t b) { return Crc32Std::step(c, b); }
 inline uint32_t crc32_update(uint32_t c, const void* p, uint16_t n) { return Crc32Std::buf(c, p, n); }
 inline constexpr uint32_t crc32_final(uint32_t c) { return c ^ 0xFFFFFFFFUL; }
 

@@ -277,7 +277,7 @@ constexpr Fixed<N> clamp(const Fixed<N>& v, const Fixed<N>& lo, const Fixed<N>& 
     return v.clamped(lo, hi);
 }
 template <uint8_t N>
-constexpr Fixed<N> abs(const Fixed<N>& v) {
+constexpr Fixed<N> absVal(const Fixed<N>& v) {
     return v.raw() >= 0 ? v : v.negSat();
 }
 

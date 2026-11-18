@@ -486,7 +486,7 @@ class GraphicsDisplay : public Print {
     }
 
    protected:
-    void swap(int &a, int &b) {
+    void swapValues(int &a, int &b) {
         if (a > b) {
             int c = a;
             a = b;

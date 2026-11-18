@@ -96,7 +96,7 @@ enum class uint8_t. Многоисходные операции возвраща
 ### 2.1 C-CORE-TYPES — fn::Pin / fn::Result / трейты
 - **Модуль/слой:** core/Types.h, pin/Pin.h · L0/L1
 - **Назначение:** единые типы-валюта проекта.
-- **API:** Pin(port,bit), Pin::fromId(id), NoPin; port()/bit()/mask()/id()/valid();
+- **API:** Pin(port,bit), Pin::fromId(id), NoPin; port()/bitIndex()/mask()/id()/valid();
   Result; трейты Select/Id/UnsignedOf/IsBitType/WidthOf/UBits; resultName(), Status, ok(), toStatus(), toResult().
 - **Предусловия:** конструирование Pin — port∈{B,C,D}, bit∈0..7; fromId принимает любой
   uint8_t (валидность проверяет valid()).
@@ -197,6 +197,8 @@ enum class uint8_t. Многоисходные операции возвраща
 - **Модуль/слой:** core/Crc.h · L3
 - **Назначение:** единый CRC-движок (D9), побитовый без таблиц (D20).
 - **API:** crc8_maxim (init=0x00, poly 0x8C reflected), crc16_ccitt (init=0xFFFF),
+  crc16_modbus; движок E::step(crc,b) (не byte — макрос Arduino, INV-10);
+  опционально CRC-16 в Packet (FN_PACKET_CRC16, D67).
   crc16_modbus; опционально CRC-16 в Packet (FN_PACKET_CRC16, D67).
 - **Предусловия:** буфер валиден, len корректен; init соответствует алгоритму.
 - **Постусловия:** контрольные значения: "123456789" → crc8_maxim=0xA1, ccitt=0x29B1,
@@ -282,7 +284,7 @@ enum class uint8_t. Многоисходные операции возвраща
 - **Модуль/слой:** pin/Pin.h · L5.1
 - **Назначение:** компактный тип вывода (1 байт). Базовый контракт типа — C-CORE-TYPES (§2.1);
   здесь — специфика Pin.h как отдельного модуля.
-- **API:** Pin(port,bit), Pin::fromId(id), NoPin=0xFF; port()/bit()/mask()/id()/valid().
+- **API:** Pin(port,bit), Pin::fromId(id), NoPin=0xFF; port()/bitIndex()/mask()/id()/valid().
 - **Предусловия:** port∈{B,C,D}, bit∈0..7 при конструировании; fromId принимает любой uint8_t.
 - **Постусловия:** sizeof==1; id()==(port<<3)|bit; mask()==1<<bit; valid()==false для PC7,
   id≥PortCount*8, NoPin. Физические ограничения платы — на Board.h, не на Pin.

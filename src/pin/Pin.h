@@ -103,7 +103,7 @@ public:
     static constexpr uint8_t num()      { return N; }
     static constexpr Pin     pin()      { return boardPin(N); }
     static constexpr Port    port()     { return boardPin(N).port(); }
-    static constexpr uint8_t bitIndex() { return boardPin(N).bit(); }
+    static constexpr uint8_t bitIndex() { return boardPin(N).bitIndex(); }
     static constexpr uint8_t mask()     { return boardPin(N).mask(); }
 };
 
