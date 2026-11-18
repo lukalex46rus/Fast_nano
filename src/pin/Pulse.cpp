@@ -77,12 +77,12 @@ volatile uint8_t  sh = 0;          ///< log2(делителя)
 volatile bool     isActive = false;
 
 InputCapture::Callback volatile cb = nullptr;
-Result last = Result::Ok;
+Result lastErr = Result::Ok;       ///< последняя ошибка (не путать с last — моментом захвата)
 
 constexpr uint32_t TicksPerUs = F_CPU / 1000000UL;
 
-inline Result fail(Result r) { last = r; return r; }
-inline Result done() { last = Result::Ok; return Result::Ok; }
+inline Result fail(Result r) { lastErr = r; return r; }
+inline Result done() { lastErr = Result::Ok; return Result::Ok; }
 
 inline tmr::Clock clockOf(InputCapture::Presc p) {
     switch (p) {
@@ -219,7 +219,7 @@ void InputCapture::detach() {
 
 bool InputCapture::isAttached() { return pulse_detail::cb != nullptr; }
 
-Result InputCapture::lastError() { return pulse_detail::last; }
+Result InputCapture::lastError() { return pulse_detail::lastErr; }
 
 }  // namespace fn
 

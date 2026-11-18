@@ -52,6 +52,9 @@
 | ✅ | P0-18 | ShiftRegister использует Pin<N> (не шаблон) вместо BoardPin<N>; include без гейта | device/ShiftRegister.h, Fast_nano.h, Features.h | BoardPin<N> + флаг F_USE_SHIFTREG |
 | ✅ | P0-19 | GraphicsDisplay: определение swap переименовано, вызовы — нет | display/GraphicsDisplay.h | 6 вызовов → swapValues |
 | ✅ | P0-20 | Зачаточные L7/L9/L10 открыты: Pin<N>, PinRef(n,uint8_t), Timer2::Mode::CTC | core/Features.h | F_USE_LOGIC/SERVO/KEYPAD/GFX/CHAR = 0 |
+| ✅ | P0-21 | Config.h использует size_t без stddef.h (падали 5 TU шин) | core/Config.h | добавить #include <stddef.h> |
+| ✅ | P0-22 | I2c.cpp вызывает regs:: без include Registers.h | bus/I2c.cpp | добавить #include "../core/Registers.h" |
+| ✅ | P0-23 | pulse_detail::last объявлен дважды (uint32_t таймстамп + Result ошибка) | pin/Pulse.cpp:70,80 | ошибку переименовать в lastErr |
 
 **Критерий готовности:** дефолтный скетч с Fast_nano_core.h собирается; Pwm1 выдаёт
 корректную частоту/скважность на железе; конфликт Pulse+Pwm1 на Timer1 отлавливается.

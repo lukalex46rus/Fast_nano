@@ -32,7 +32,8 @@
 //    - Файл не определяет ISR: при использовании Wire ядра заявка
 //      FN_CLAIM_VECTOR упадёт на компиляции, что и требуется.
 //
-//  ЗАВИСИМОСТИ: I2c.h, core/BusContract.h, timer/Tick.h, util/twi.h, avr/io.h
+//  ЗАВИСИМОСТИ: I2c.h, core/Registers.h, core/BusContract.h, timer/Tick.h,
+//               util/twi.h, avr/io.h
 // ============================================================================
 
 #include "../core/Config.h"
@@ -40,6 +41,7 @@
 #if F_USE_I2C
 
 #include "I2c.h"
+#include "../core/Registers.h"
 #include "../timer/Tick.h"
 
 #include <avr/io.h>

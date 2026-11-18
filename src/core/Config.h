@@ -37,10 +37,11 @@
 //    namespace fn { namespace crc { /* ... */ } }
 //    #endif
 //
-//  ЗАВИСИМОСТИ: ConfigCheck.h, Features.h, stdint.h, limits.h
+//  ЗАВИСИМОСТИ: ConfigCheck.h, Features.h, stdint.h, stddef.h, limits.h
 // ============================================================================
 
 #include <stdint.h>
+#include <stddef.h>
 #include <limits.h>
 
 #include "ConfigCheck.h"
