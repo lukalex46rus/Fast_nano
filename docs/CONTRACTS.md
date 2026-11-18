@@ -600,7 +600,10 @@ enum class uint8_t. Многоисходные операции возвраща
 - **Ресурсы:** USART0+D0/D1; RX-буфер (sizeof по конфигу); вектор UsartRx. → RESOURCES.md.
 - **Инварианты:** INV-05/06/13/14/21, INV-03.
 - **Верификация:** HW (baud/ошибка, потеря байтов при переполнении); HOST (calcUbrr/округление).
-- **Расхождения:** P0-2 — FN_CLAIM_VECTOR(UsartRx,UART) падает при дефолте NONE → привести к UART.
+- **Расхождения:** аппаратный Uart несовместим с ядром Arduino (Serial определяет
+  тот же __vector_18, D85). По умолчанию F_USE_UART=0; доступен SoftUartTx
+  (F_USE_UART_SOFT=1). Включение F_USE_UART требует FN_USART_RX_OWNER=FN_OWNER_UART
+  и отказа от Serial, что на Arduino IDE практически недостижимо.
 
 #### C-BUS-I2C — fn::I2c (+I2cSoft)
 - **Модуль/слой:** bus/I2c.cpp/h, I2cSoft.cpp/h · L6

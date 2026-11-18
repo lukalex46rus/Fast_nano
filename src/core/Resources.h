@@ -35,7 +35,8 @@
 //    TIMER0_COMPA/B          NONE
 //    TIMER1_CAPT/OVF/COMPA/B NONE
 //    TIMER2_OVF/COMPA/B      NONE
-//    USART_RX/UDRE, SPI_STC, TWI, ADC, ANALOG_COMP, WDT   NONE
+//    USART_RX            ARDUINO (ISR в HardwareSerial0.cpp, отдать нельзя)
+//    USART_UDRE, SPI_STC, TWI, ADC, ANALOG_COMP, WDT   NONE
 //
 //  ТАЙМЕРЫ ЦЕЛИКОМ
 //    FN_TIMER0_DEVICE = ARDUINO   (millis/micros/delay + analogWrite на D5/D6)
@@ -156,8 +157,11 @@
 #define FN_TIMER2_COMPB_OWNER FN_OWNER_NONE
 #endif
 
+// USART_RX: ISR определён в HardwareSerial0.cpp ядра Arduino (объект Serial
+// линкуется всегда). Отдать нельзя — как INT0/INT1 (D22). Аппаратный fn::Uart
+// требует F_USE_UART=1 И отказа от Serial в скетче; см. Features.h.
 #ifndef FN_USART_RX_OWNER
-#define FN_USART_RX_OWNER FN_OWNER_UART
+#define FN_USART_RX_OWNER FN_OWNER_ARDUINO
 #endif
 #ifndef FN_USART_UDRE_OWNER
 #define FN_USART_UDRE_OWNER FN_OWNER_NONE

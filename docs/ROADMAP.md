@@ -55,6 +55,9 @@
 | ✅ | P0-21 | Config.h использует size_t без stddef.h (падали 5 TU шин) | core/Config.h | добавить #include <stddef.h> |
 | ✅ | P0-22 | I2c.cpp вызывает regs:: без include Registers.h | bus/I2c.cpp | добавить #include "../core/Registers.h" |
 | ✅ | P0-23 | pulse_detail::last объявлен дважды (uint32_t таймстамп + Result ошибка) | pin/Pulse.cpp:70,80 | ошибку переименовать в lastErr |
+| ✅ | P0-24 | USART_RX отдан UART, но ядро всегда определяет __vector_18 → multiple definition | core/Resources.h | владелец ARDUINO, отдать нельзя (D85) |
+| ✅ | P0-25 | F_USE_UART управлял и аппаратным и soft-драйвером | Features.h, UartSoft.*, Fast_nano.h | F_USE_UART=0, новый F_USE_UART_SOFT=1 |
+| ✅ | P0-26 | заявка Uart падала на линкере, а не на компиляции | bus/Uart.cpp | static_assert с понятным сообщением |
 
 **Критерий готовности:** дефолтный скетч с Fast_nano_core.h собирается; Pwm1 выдаёт
 корректную частоту/скважность на железе; конфликт Pulse+Pwm1 на Timer1 отлавливается.

@@ -39,6 +39,10 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+// Вектор принадлежит ядру Arduino по умолчанию. Для fn::Uart нужно явно
+// задать FN_USART_RX_OWNER=FN_OWNER_UART централизованно и отказаться от Serial.
+static_assert(FN_USART_RX_OWNER == FN_OWNER_UART,
+              "fn::Uart: задайте FN_USART_RX_OWNER=FN_OWNER_UART и не используйте Serial");
 FN_CLAIM_VECTOR(UsartRx, FN_OWNER_UART);
 
 namespace fn {

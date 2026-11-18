@@ -127,6 +127,8 @@
 #endif
 #if F_USE_UART
 #include "bus/Uart.h"
+#endif
+#if F_USE_UART_SOFT
 #include "bus/UartSoft.h"
 #endif
 #if F_USE_I2C

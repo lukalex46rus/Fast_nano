@@ -98,7 +98,8 @@ public/internal API, зависимостям и статусу готовнос
 |---|---|---|---|---|
 | BusContract.h | контракт шины | writeP/waitUntil/transferFill<Bus> | Types, Compiler, Progmem, Tick | 🔧 |
 | Buffer.h | SPSC ring buffer | RingBuffer<T,N>/push/pop/available/dropped | Types | 🔧 |
-| Uart.cpp/h (+Soft) | USART0/soft TX | begin/end/write/read/transfer/available/flush | BusContract,Buffer,Registers,Resources,Tick | ❌ claim UsartRx (P0-2) |
+| Uart.cpp/h | USART0 (несовместим с Serial ядра) | begin/end/write/read/available/flush | BusContract,Buffer,Registers,Resources,Tick | ⛔ выключен (D85) |
+| UartSoft.cpp/h | программный TX | SoftUartTx<P,Baud>::write | Types,Registers,Tick | 🔧 |
 | I2c.cpp/h (+Soft) | TWI/soft I2C | begin/end/start/stop/write/read/recover/scan | BusContract,Registers,Resources,Tick,Board | 🔧 |
 | Spi.cpp/h (+Soft) | SPI/soft SPI | begin/end/transfer/read/write/transfer16 | BusContract,Registers,Resources,Tick | ❌ claim SpiStc (P0-2), G-2/G-5 |
 | Packet.h | кадровый автомат | Packet/CRC-8/16/reset | Crc,Buffer | 🔧 |

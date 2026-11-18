@@ -22,6 +22,6 @@
 
 #include "../core/Config.h"
 
-#if F_USE_UART
+#if F_USE_UART_SOFT
 #include "UartSoft.h"
 #endif

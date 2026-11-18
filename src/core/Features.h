@@ -151,8 +151,14 @@
 #ifndef F_USE_BUFFER
 #define F_USE_BUFFER 1
 #endif
+// Аппаратный USART0: конфликтует с Serial ядра Arduino (__vector_18).
+// Включать ТОЛЬКО если Serial в скетче не используется. По умолчанию 0.
 #ifndef F_USE_UART
-#define F_USE_UART 1
+#define F_USE_UART 0
+#endif
+// Программный UART (SoftUartTx): векторов не занимает, безопасен всегда.
+#ifndef F_USE_UART_SOFT
+#define F_USE_UART_SOFT 1
 #endif
 #ifndef F_USE_SPI
 #define F_USE_SPI 1
@@ -292,6 +298,10 @@
 #error "F_USE_UART требует F_USE_TICK=1 (таймауты через expired)"
 #endif
 
+#if F_USE_UART && F_USE_UART_SOFT
+#warning "F_USE_UART + F_USE_UART_SOFT: оба драйвера активны, проверьте пины"
+#endif
+
 #if F_USE_TASK && !F_USE_LOGIC
 #error "F_USE_TASK требует F_USE_LOGIC=1"
 #endif
@@ -317,7 +327,7 @@
 #endif
 
 #if F_USE_TMC2209 && !(F_USE_STEPPER && F_USE_UART)
-#error "F_USE_TMC2209 требует F_USE_STEPPER=1 и F_USE_UART=1"
+#error "F_USE_TMC2209 требует F_USE_STEPPER=1 и F_USE_UART=1 (аппаратный USART)"
 #endif
 
 #if F_USE_MCP23017 && !F_USE_I2C

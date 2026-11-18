@@ -55,7 +55,7 @@
 | TIMER1_CAPT/OVF | PULSE | да | compile-time claim (Pulse определяет ISR) |
 | TIMER1_COMPA/B | NONE | да | compile-time claim |
 | TIMER2_OVF/COMPA/B | NONE | да | compile-time claim |
-| USART_RX | UART | да | compile-time claim |
+| USART_RX | ARDUINO | **нет** | ISR в HardwareSerial0.cpp ядра; fn::Uart несовместим с Serial |
 | USART_UDRE | NONE | да | compile-time claim |
 | SPI_STC | SPI | да | compile-time claim |
 | TWI | I2C | да | compile-time claim |
@@ -82,7 +82,7 @@
 
 | Ресурс | Владелец | Освобождение |
 |---|---|---|
-| USART0 + D0/D1 | Uart | Uart::end() |
+| USART0 + D0/D1 | ARDUINO (Serial) | fn::Uart требует отказа от Serial; на Arduino IDE недостижимо |
 | SPI + D10..D13 | Spi | Spi::end() (прежнее состояние пинов НЕ восстанавливается) |
 | TWI + A4/A5 | I2c | I2c::end() |
 | ADC | Adc | Adc::end(); компаратору в режиме Mux нужен ADEN=0 |

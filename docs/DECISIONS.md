@@ -96,6 +96,7 @@
 | D36 | % N при нечётном N = __udivqi3 на байт | RingBuffer N степень двойки | маска вместо деления | Buffer |
 | D37 | pushOverwrite двигал _tail потребителя | удалён | SPSC не ломается | Buffer |
 | D38 | аппаратный буфер UART 2 байта, переполнение за 2 мс | RX всегда через ISR в ring buffer | нет потери | Uart |
+| D85 | HardwareSerial0.cpp ядра всегда линкуется и определяет __vector_18 | USART_RX владелец ARDUINO, отдать нельзя; F_USE_UART=0 по умолчанию, SoftUartTx отдельный флаг F_USE_UART_SOFT | аппаратный fn::Uart несовместим с ядром Arduino | INV-05, RESOURCES §3 |
 | D39 | bitUs=1e6/baud давал 8% ошибки на 115200 | SoftUart тайминг в тактах | точность | UartSoft |
 | D40 | без прескалера всё ниже 30418 Гц молча = 30418 | I2C подбор TWPS | диапазон 490 Гц…1 МГц | I2c |
 | D41 | PORT|=mask при DDR=input включал подтяжку | SoftI2c настоящий open-drain | фронт корректен | INV-16 |
