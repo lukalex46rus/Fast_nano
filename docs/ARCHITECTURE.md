@@ -27,8 +27,8 @@ MODULES.md; бюджеты/владение → RESOURCES.md; решения →
 
 | Слой | Назначение | Модули | Зависит от |
 |---|---|---|---|
-| L0 | конфиг и диагностика | ConfigCheck, Features, Config, Compiler, Types, Crash, Assert, Reset | — (avr-libc) |
-| L1 | доступ к железу | Atomic, Registers, Memory | L0 |
+| L0 | конфиг и диагностика | ConfigCheck, Features, Config, Compiler, Types, Crash, Assert | — (avr-libc) |
+| L1 | доступ к железу | Atomic, Registers, Memory, Reset | L0 |
 | L2 | битовый слой | BitMask/Scan/Count/Ops/Shift/Reverse/Pack/Set/Flags, Bits, Tables | L0–L1 |
 | L3 | данные | Progmem, Crc, ForMacro | L0–L2 |
 | L4 | прерывания и ресурсы | Resources, pin/Irq | L0–L3 |

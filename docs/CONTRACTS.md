@@ -43,7 +43,7 @@
 
 ### 1.1 fn::Result — коды и семантика
 enum class uint8_t. Многоисходные операции возвращают Result; bool — только для
-бинарного исхода. Свой enum с Ok/Timeout/Busy запрещён (INV-R-RESULT).
+бинарного исхода. Свой enum с Ok/Timeout/Busy запрещён (INV-21).
 
 | Код | Семантика | Повторяемость |
 |---|---|---|
@@ -71,21 +71,21 @@ enum class uint8_t. Многоисходные операции возвраща
 
 ### 1.3 Время и таймауты
 - Сравнения времени ТОЛЬКО через elapsed()/expired()/expiredUs() (wrap-safe).
-  Прямое `millis() > deadline` запрещено (INV-R-TIME, D25).
-- timeoutMs == 0 — одна проверка без ожидания. Бесконечного ожидания железа НЕТ (INV-R-WAIT).
+  Прямое `millis() > deadline` запрещено (INV-20, D25).
+- timeoutMs == 0 — одна проверка без ожидания. Бесконечного ожидания железа НЕТ (INV-13).
 - Разрешение millis() = 1 мс, micros() = 4 мкс. Точность до такта — InputCapture (Pulse).
 - Блокирующие измерители декларируют худший случай блокировки в контракте.
 
 ### 1.4 Конкурентность ISR / main
 - 8-битный одиночный доступ атомарен аппаратно (без cli).
-- Многобайтовые разделяемые данные и любой RMW — под AtomicBlock (INV-R-ATOMIC).
+- Многобайтовые разделяемые данные и любой RMW — под AtomicBlock (INV-07).
 - ISR не вкладываются; ISR vs main защищается AtomicBlock в main.
 - SPSC-буферы: producer=ISR, consumer=main; при 8-битных индексах блокировка не нужна.
 - Коллбэки из ISR — короткие, без блокирующих операций.
 
 ### 1.5 Инициализация и владение
 - begin() конфигурирует ресурс; повторный begin допустим (для шин эквивалентен end+begin, D74).
-- end() освобождает ресурс. Порядок перед сном: Xxx::end() → Power::disable(...) (INV-R-ORDER).
+- end() освобождает ресурс. Порядок перед сном: Xxx::end() → Power::disable(...) (INV-08).
 - Разделяемый ресурс (Timer1) — runtime acquire/release; одиночный — compile-time FN_CLAIM_* (RESOURCES.md).
 - Инициализация объекта завершается ДО регистрации в диспетчере/ISR.
 
@@ -97,7 +97,7 @@ enum class uint8_t. Многоисходные операции возвраща
 - **Модуль/слой:** core/Types.h, pin/Pin.h · L0/L1
 - **Назначение:** единые типы-валюта проекта.
 - **API:** Pin(port,bit), Pin::fromId(id), NoPin; port()/bit()/mask()/id()/valid();
-  Result; трейты Select/Id/UnsignedOf/IsBitType/WidthOf/UBits; resultName().
+  Result; трейты Select/Id/UnsignedOf/IsBitType/WidthOf/UBits; resultName(), Status, ok(), toStatus(), toResult().
 - **Предусловия:** конструирование Pin — port∈{B,C,D}, bit∈0..7; fromId принимает любой
   uint8_t (валидность проверяет valid()).
 - **Постусловия:** sizeof(Pin)==1; id()==(port<<3)|bit; mask()==1<<bit; valid()==false
@@ -107,7 +107,7 @@ enum class uint8_t. Многоисходные операции возвраща
 - **Таймаут/блокировка:** нет (чистые/constexpr).
 - **ISR:** безопасно (без состояния).
 - **Ресурсы:** 0 SRAM; таблица resultName во flash (Tables.cpp). → RESOURCES.md
-- **Инварианты:** INV-R-NAME (не совпадать с макросами Arduino), INV-R-IDENT (нет _Заглавная).
+- **Инварианты:** INV-10 (не совпадать с макросами Arduino), INV-11 (нет _Заглавная).
 - **Верификация:** host static_assert sizeof/значения; unit valid() по всем 256 id.
 
 ### 2.2 C-CORE-REG — fn::regs
@@ -127,7 +127,7 @@ enum class uint8_t. Многоисходные операции возвраща
 - **ISR:** неатомарные setMask/clearMask/mode* — RMW, небезопасны при ISR по тому же порту →
   брать *Atomic или FastPin. toggle и 8-бит read/write атомарны.
 - **Ресурсы:** 0 SRAM. FastPin → sbi/cbi при константном адресе (требует FN_INLINE sfr; backlog G-6).
-- **Инварианты:** INV-R-ORDER (PORT→DDR), INV-R-ATOMIC, INV-R-PROGMEM (нет таблиц).
+- **Инварианты:** INV-08 (PORT→DDR), INV-07, INV-01 (нет таблиц).
 - **Верификация:** hardware (glitch/осциллограф), layoutOk runtime, objdump для FastPin.
 
 ### 2.3 C-CORE-ATOMIC — AtomicBlock / atomic*
@@ -144,7 +144,7 @@ enum class uint8_t. Многоисходные операции возвраща
 - **Таймаут/блокировка:** нет; держать блок коротким (задержка ISR).
 - **ISR:** AtomicBlock в main защищает от ISR; внутри ISR избыточен (ISR не вкладываются), допустим.
 - **Ресурсы:** AtomicBlock = 1 Б stack (SREG); AtomicCounter<T> = sizeof(T). → RESOURCES.md
-- **Инварианты:** INV-R-ATOMIC.
+- **Инварианты:** INV-07.
 - **Верификация:** host (логика вложенности), hardware (гонки ISR/main).
 
 ### 2.4 C-TIMER-TICK — база времени
@@ -161,7 +161,7 @@ enum class uint8_t. Многоисходные операции возвраща
   при конкурентном start/stop из ISR — защищать вызывающему.
 - **Ресурсы:** 0 SRAM без объектов; sizeof(Timeout)/sizeof(Stopwatch) → RESOURCES.md (backlog G-1).
   Timer0 не занимается (клиент, D24).
-- **Инварианты:** INV-R-WAIT, INV-R-TIME (D25).
+- **Инварианты:** INV-13, INV-20 (D25).
 - **Верификация:** host unit wrap (since=0xFFFFFFF0, now=0x10 → elapsed=0x20); hardware delayUsPrecise.
 
 ### 2.5 C-CORE-BITS — битовый слой (BitMask/Scan/Count/Ops/Shift/Reverse/Pack/Set/Flags, Bits)

@@ -54,7 +54,7 @@ public/internal API, зависимостям и статусу готовнос
 | Модуль | Ответственность | Public API | Зависимости | Статус |
 |---|---|---|---|---|
 | Resources.h | реестр владения | FN_CLAIM_VECTOR/TIMER, ownerName | Types | ❌ дефолты≠заявки (P0-2) |
-| pin/Irq.cpp/h | диспетчер PCINT/INT | PinChange/ExternalInt attach/detach/enable/disable | Pin,Board,Resources,Atomic | 🔧 (G-4 enable/disable) |
+| pin/Irq.cpp/h | диспетчер PCINT/INT | PinChange/ExternalInt attach/detach/enable/disable | Pin,Board,Resources,Atomic,Registers | 🔧 (G-4 enable/disable) |
 
 ## L5.1 — пины/ввод
 
@@ -111,7 +111,7 @@ public/internal API, зависимостям и статусу готовнос
 |---|---|---|---|---|
 | Power.cpp/h | сон/делители/PRR | setMode/sleepOnce/setClockDivider/disable/enable | Registers,Resources,Atomic | 🔧 |
 | Adc.cpp/h | АЦП | begin/read10/read8/readMux/readVcc/readTemperature | Registers,Resources,Atomic,Tick | ❌ claim Adc (P0-2), G-8 |
-| AnalogComparator.cpp/h | аналоговый компаратор | begin/setNegativeMux/callback | Registers,Resources | ❌ claim AnalogComp (P0-2) |
+| AnalogComparator.cpp/h | аналоговый компаратор | begin/setNegativeMux/callback | Types, Atomic, Resources | ❌ claim AnalogComp (P0-2) |
 
 ## L8 — строки/математика
 

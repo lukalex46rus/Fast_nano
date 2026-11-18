@@ -32,6 +32,7 @@
 | D6 | лишние ~6 тактов на cli для байтовых операций | 8-бит read/write без cli | аппаратная атомарность | INV-07 |
 | D7 | таблицы сигналов жгута дороги | Pin в 1 байт | вдвое дешевле | C-CORE-TYPES |
 | D14 | &PORTB не constant expression | layoutOk() рантаймово | проверка раскладки при старте | C-CORE-REG |
+| D64 | timer и pin нуждались в общей карте платы | pin/Board.h — отдельный блок umbrella | общий для timer и pin | DEP-7 |
 | D79 | RMW байтового счётчика рвётся ISR | Atomic: 8-бит без cli, RMW под блокировкой | корректность + экономия тактов | INV-07 |
 | D84 | stackPaint красил свой кадр | guard 64 Б, stackUsed занижает | документированная нижняя граница | RESOURCES §7 |
 
@@ -67,6 +68,8 @@
 | D25 | wrap millis 49.7 сут / micros 71.6 мин | expired()/elapsed() вместо сравнения | wrap-safe | INV-20 |
 | D26 | ISR удлинял задержку, ошибка ~41 мкс/65 мс | delayUsPrecise: компенсация + AtomicBlock | точная задержка | C-TIMER-TICK |
 | D27 | маска 0x0C сохраняла reserved, глушила COM | Timer1::setMode маска 0xF0 | COM сохранён | G-7 (CS-док) |
+| D28 | флаг WDRF аппаратно форсирует WDE, Interrupt давал Reset | сброс WDRF перед enable | корректный режим Interrupt | INV-15 |
+| D29 | wdr отодвигал сброс на полный период | WDT ISR без wdr | предсказуемый timeout | C-TIMER-WDT |
 | D48 | обратный порядок чтений давал ложное +1 | коррекция TOV1&&cnt>=icr, порядок ICR→TOV→TCNT | детерминированно | Pulse |
 | D49 | Timer1::takeover с claim запрещал всех потребителей | регистровый драйвер без заявки; потребитель заявляет | runtime acquire | INV-19, P0-2 |
 | D50 | t<<sh переполнял uint32 при длинных периодах | periodMicros: q=t/TicksPerUs затем q<<sh, насыщение | без переполнения | Timer1 |
