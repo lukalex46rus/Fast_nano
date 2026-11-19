@@ -1,12 +1,11 @@
 #pragma once
 // ============================================================================
-//  ShiftRegister.h — сдвиговые регистры (74HC595 / 74HC165) на BoardPin
+//  ShiftRegister.h — вывод/ввод байтов через сдвиговый регистр (74HC595/165)
 //  Цель: ATmega328P/328, gnu++11
 // ----------------------------------------------------------------------------
 //  НАЗНАЧЕНИЕ
-//    Программная передача/приём байта через два вывода: данные и тактовый.
-//    Порядок бит выбирается шаблоном (MSB_FIRST / LSB_FIRST). Задержка между
-//    фронтами задаётся параметром dlyUs (0 = без задержки, максимальная скорость).
+//    Программный побитовый обмен с внешним сдвиговым регистром. Тактирование
+//    вручную, задержка между фронтами задаётся вызывающим (0 = без задержки).
 //
 //  API (namespace fn::shift)
 //    enum Order : uint8_t { MSB_FIRST = 1, LSB_FIRST = 0 }
@@ -15,27 +14,24 @@
 //    readByte<DAT, CLK, ORDER>(dlyUs = 0) -> uint8_t
 //
 //  ОГРАНИЧЕНИЯ / ВАЖНО
-//    - DAT/CLK — номера выводов платы (0..19), тип BoardPin<N>, не fn::Pin:
-//      fn::Pin — дескриптор-значение, шаблонного API у него нет.
-//    - Направление выводов задаёт вызывающий: BoardPin<DAT>::output(),
-//      BoardPin<CLK>::output(). Модуль DDR не трогает.
-//    - Параметр назван dlyUs, а НЕ delayUs: одноимённый параметр затеняет
-//      fn::delayUs, и qualified-id разрешается относительно параметра
-//      (ошибка 'delayUs is not a member of fn::fn'). Вызов идёт через ::fn::.
-//    - Защелка (RCLK/STCP) — ответственность вызывающего: после send()
-//      дёрните её отдельно.
+//    - DAT/CLK — номера выводов платы (BoardPin<N>). Направление выводов
+//      настраивает вызывающий: BoardPin<DAT>::output(), BoardPin<CLK>::output().
+//    - Параметр задержки назван dlyUs, а НЕ delayUs: имя delayUs затеняло бы
+//      функцию fn::delayUs, и вызов разрешался бы как fn::fn::delayUs (INV-24).
+//    - Защелка (LATCH/RCLK) — ответственность вызывающего: дёрните её после send.
 //
 //  СТОИМОСТЬ (AVR)
-//    Ноль байт SRAM. Flash — по инстанцированию шаблона, ~60 байт на функцию.
+//    Ноль байт SRAM. Шаблоны инстанцируются только при использовании.
 //
 //  ПРИМЕР
 //    fn::BoardPin<8>::output();   // DATA
-//    fn::BoardPin<9>::output();   // CLK
+//    fn::BoardPin<9>::output();   // CLOCK
 //    fn::BoardPin<10>::output();  // LATCH
+//    fn::BoardPin<10>::low();
 //    fn::shift::sendByte<8, 9>(0xA5);
-//    fn::BoardPin<10>::high(); fn::BoardPin<10>::low();
+//    fn::BoardPin<10>::high();
 //
-//  ЗАВИСИМОСТИ: core/Compiler.h, pin/Pin.h (BoardPin), timer/Tick.h (delayUs)
+//  ЗАВИСИМОСТИ: core/Compiler.h, pin/Pin.h, timer/Tick.h
 // ============================================================================
 
 #include <stdint.h>
@@ -62,13 +58,12 @@ inline void sendByte(uint8_t data, uint8_t dlyUs = 0) {
     }
 }
 
-// Отправить буфер подряд, без защёлки между байтами.
 template <uint8_t DAT, uint8_t CLK, uint8_t ORDER = MSB_FIRST>
 inline void send(const uint8_t* data, uint16_t len, uint8_t dlyUs = 0) {
     while (len--) sendByte<DAT, CLK, ORDER>(*data++, dlyUs);
 }
 
-// Прочитать байт: выборка до фронта CLK (данные уже выставлены ведомым).
+// Прочитать байт MSB-first (или LSB-first).
 template <uint8_t DAT, uint8_t CLK, uint8_t ORDER = MSB_FIRST>
 inline uint8_t readByte(uint8_t dlyUs = 0) {
     uint8_t v = 0;
