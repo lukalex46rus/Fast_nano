@@ -36,17 +36,15 @@ uint8_t savedCs = 0;
 bool owned = false;
 
 // Подбор минимального делителя Timer2, при котором cycles влезает в maxCount.
+// Коды CS2 1..7 = Div1/8/32/64/128/256/1024. Перебор без таблицы: prescaleOf
+// разворачивается в константы, .data не занимает (INV-01).
 uint32_t bestClock2(uint32_t cycles, uint32_t maxCount, Timer2::Clock2& out) {
-    static const Timer2::Clock2 kClocks[7] = {
-        Timer2::Clock2::Div1,   Timer2::Clock2::Div8,   Timer2::Clock2::Div32,
-        Timer2::Clock2::Div64,  Timer2::Clock2::Div128, Timer2::Clock2::Div256,
-        Timer2::Clock2::Div1024
-    };
-    for (uint8_t i = 0; i < 7; ++i) {
-        const uint16_t d = Timer2::prescaleOf(kClocks[i]);
+    for (uint8_t cs = 1; cs <= 7; ++cs) {
+        const Timer2::Clock2 c = static_cast<Timer2::Clock2>(cs);
+        const uint16_t d = Timer2::prescaleOf(c);
         const uint32_t t = cycles / d;
         if (t >= 1 && t <= maxCount) {
-            out = kClocks[i];
+            out = c;
             return t;
         }
     }

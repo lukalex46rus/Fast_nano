@@ -29,10 +29,10 @@
 | AtomicBlock | 1 Б (stack) | SREG | ✅ |
 | AtomicCounter<T> | sizeof(T) | volatile T | ✅ |
 | Timeout | 8 Б | uint32 start + uint32 period | ✅ |
-| Stopwatch | 9 Б | uint32 start + uint32 acc + bool run | ⚠️ цель 8 (G-1) |
+| Stopwatch | 8 Б | uint32 start + uint32 acc (старший бит = флаг работы) | ✅ G-1 |
 | RingBuffer<u8,64> | 68 Б | buf[64]+head(1)+tail(1)+dropped(2) | ✅ |
-| irq::Slot | 5 Б | Pin(1)+cb(2)+ctx(2) | ✅ |
-| пул irq (FN_IRQ_SLOTS=8) | 40 Б + 6 на INT | 8×5 + ext | ✅ |
+| irq::Slot | 6 Б | Pin(1)+cb(2)+ctx(2)+on(1) | ✅ G-4 |
+| пул irq (FN_IRQ_SLOTS=8) | 48 Б + 6 на INT | 8×6 + ext | ✅ |
 | LinearRegression | 17 Б | 4×float + bool | ✅ (float-путь) |
 | Crash Record (.noinit) | 12 Б | magic+boots+flags+code+line+expr+file+sum | ✅ |
 | tmr::acquire реестр | 3 Б | по 1 Б на таймер (TimerCommon.cpp), гейт F_USE_TIMER_ARBITER | ✅ |

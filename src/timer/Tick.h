@@ -44,7 +44,8 @@
 //    - Если Timer0 захвачен другим модулем (fn::Timer0::begin), millis/micros
 //      перестают работать. Заявка FN_CLAIM_TIMER ловит это на компиляции.
 //    - sizeof(Timeout) == 8, sizeof(Stopwatch) == 8. Объекты не создают
-//      прерываний и не занимают таймеров.
+//      прерываний и не занимают таймеров. У Stopwatch флаг работы упакован
+//      в старший бит аккумулятора: диапазон накопления 2^31 мкс ≈ 35.8 мин.
 //
 //  СТОИМОСТЬ (AVR)
 //    Ноль байт SRAM без объектов. millis/micros — вызов ядра (~20 байт).
@@ -130,37 +131,37 @@ private:
 };
 
 // ---------------------------- секундомер -----------------------------------
+// sizeof == 8: флаг работы упакован в старший бит аккумулятора (G-1).
+// Диапазон накопления — 2^31 мкс ≈ 35.8 мин; при превышении wraps, как micros().
 class Stopwatch {
 public:
-    Stopwatch() : _start(0), _acc(0), _run(false) {}
+    Stopwatch() : _start(0), _acc(0) {}
 
     void start() {
-        if (_run) return;
+        if (running()) return;
         _start = ::micros();
-        _run = true;
+        _acc = uint32_t(_acc | RunBit);
     }
 
     void stop() {
-        if (!_run) return;
-        _acc = uint32_t(_acc + elapsed(_start, ::micros()));
-        _run = false;
+        if (!running()) return;
+        _acc = uint32_t((_acc & AccMask) + elapsed(_start, ::micros()));
     }
 
-    void reset() {
-        _acc = 0;
-        _run = false;
-    }
+    void reset() { _acc = 0; }
 
-    bool running() const { return _run; }
+    bool running() const { return (_acc & RunBit) != 0; }
 
     uint32_t elapsedUs() const {
-        return _run ? uint32_t(_acc + elapsed(_start, ::micros())) : _acc;
+        const uint32_t a = uint32_t(_acc & AccMask);
+        return running() ? uint32_t(a + elapsed(_start, ::micros())) : a;
     }
 
 private:
+    static constexpr uint32_t RunBit = 0x80000000UL;
+    static constexpr uint32_t AccMask = 0x7FFFFFFFUL;
+
     uint32_t _start;
     uint32_t _acc;
-    bool _run;
-};
-
-}  // namespace fn
+    
+};  // namespace fn

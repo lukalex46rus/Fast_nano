@@ -112,6 +112,16 @@
 | D74 | брошенный CLK продолжал тактировать | begin() вызывает end() | чистая инициализация | INV-17 контекст |
 | D75 | порядок байт ≠ порядок битов | transfer16(v, highByteFirst) | явный порядок | Spi |
 
+
+
+| D86 | const-таблицы делителей лежали в .data (40 Б SRAM) | SPI: PROGMEM+pgm_read; таймеры: перебор CS через constexpr prescaleOf без массива | 0 байт SRAM на таблицы | INV-01 |
+| D87 | AtomicBlock вокруг eeprom_write_byte держал cli ~3.4 мс/байт | busy_wait вне блокировки, под AtomicBlock только окно EEAR/EEDR | UART/millis не страдают при блочном update | C-STORE-EEPROM |
+| D88 | enable/disable писали PCMSK мимо пула, refreshPort откатывал | флаг on в слоте, refreshPort учитывает его; detach обновляет оба порта | кэш и железо не расходятся | C-PIN-IRQ |
+| D89 | sizeof(Stopwatch)=9 при заявленных 8 | флаг работы в старшем бите аккумулятора | 8 Б, диапазон 35.8 мин документирован | RESOURCES §2 |
+| D90 | Spi::busy()=(SPIF==0) давал true в простое | обмен синхронный → busy()=false | корректная семантика контракта | C-BUS-SPI |
+
+
+
 ## Группа: хранилище
 
 | ID | Контекст | Решение | Следствие | Ссылки |

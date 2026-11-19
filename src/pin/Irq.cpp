@@ -11,8 +11,8 @@
 //  УСТРОЙСТВО
 //    - Пул: FN_IRQ_SLOTS записей {Pin, Callback, ctx}. Линейный поиск: при 8
 //      слотах дешевле хэша и не платит за неиспользуемые выводы.
-//    - Маска PCMSKx пересчитывается из пула (refreshPort) — одно место истины,
-//      рассинхронизация железа и состояния невозможна.
+//    - Маска PCMSKx пересчитывается из пула (refreshPort) с учётом флага on —
+//      одно место истины, disable() не откатывается при attach/detach.
 //    - PCICR включается, когда на порту есть активный вывод, гаснет, когда
 //      не осталось ни одного.
 //    - ISR хранит prev-снимок порта и передаёт (prev ^ now) & mask: только
@@ -53,6 +53,7 @@ struct Slot {
     Pin pin;
     Callback volatile cb;
     void* volatile ctx;
+    bool on;                 ///< включён ли бит в PCMSK (G-4)
 };
 
 Slot slots[MaxSlots];
@@ -80,10 +81,11 @@ inline volatile uint8_t* pcMaskReg(Port p) {
 inline uint8_t pcieBit(Port p) { return uint8_t(PCIE0 + static_cast<uint8_t>(p)); }
 
 // Пересчёт маски порта из пула. Вызывать под AtomicBlock.
+// Учитывает флаг on: disable() сохраняется при последующих attach/detach.
 void refreshPort(Port p) {
     uint8_t mask = 0;
     for (uint8_t i = 0; i < MaxSlots; ++i) {
-        if (slots[i].cb != nullptr && slots[i].pin.port() == p) {
+        if (slots[i].cb != nullptr && slots[i].on && slots[i].pin.port() == p) {
             mask = uint8_t(mask | slots[i].pin.mask());
         }
     }
@@ -203,22 +205,10 @@ Result PinChange::attach(Pin p, Callback cb, void* ctx) {
 
     detail::slots[i].pin = p;
     detail::slots[i].ctx = ctx;
+    detail::slots[i].on = true;
     detail::slots[i].cb = cb;
     detail::refreshPort(p.port());
     return Result::Ok;
-}
-
-Result PinChange::attach(Pin p, SimpleCb cb) {
-    if (cb == nullptr) return Result::BadArg;
-    return attach(p, detail::simpleShim, reinterpret_cast<void*>(cb));
-}
-
-Result PinChange::attach(uint8_t arduinoPin, Callback cb, void* ctx) {
-    return attach(boardPin(arduinoPin), cb, ctx);
-}
-
-Result PinChange::attach(uint8_t arduinoPin, SimpleCb cb) {
-    return attach(boardPin(arduinoPin), cb);
 }
 
 void PinChange::detach(Pin p) {
@@ -229,6 +219,7 @@ void PinChange::detach(Pin p) {
 
     detail::slots[i].cb = nullptr;
     detail::slots[i].ctx = nullptr;
+    detail::slots[i].on = false;
 
     // Уплотнение: последнюю занятую запись переносим на освободившееся место.
     uint8_t last = MaxSlots;
@@ -238,30 +229,35 @@ void PinChange::detach(Pin p) {
     if (last < MaxSlots && last != static_cast<uint8_t>(i)) {
         detail::slots[i].pin = detail::slots[last].pin;
         detail::slots[i].ctx = detail::slots[last].ctx;
-        detail::slots[i].cb = detail::slots[last].cb;
+        detail::slots[i].on  = detail::slots[last].on;
+        detail::slots[i].cb  = detail::slots[last].cb;
         detail::slots[last].cb = nullptr;
         detail::slots[last].ctx = nullptr;
+        detail::slots[last].on = false;
+        // Перенесённый слот мог быть с другого порта — обновляем оба.
+        if (detail::slots[i].pin.port() != p.port()) {
+            detail::refreshPort(detail::slots[i].pin.port());
+        }
     }
     detail::refreshPort(p.port());
 }
 
-void PinChange::detach(uint8_t arduinoPin) { detach(boardPin(arduinoPin)); }
-
 void PinChange::enable(Pin p) {
     if (!p.valid()) return;
     AtomicBlock lock;
-    if (detail::findSlot(p) < 0) return;
-    volatile uint8_t* m = detail::pcMaskReg(p.port());
-    *m = uint8_t(*m | p.mask());
-    PCICR = uint8_t(PCICR | detail::pcieBit(p.port()));
+    const int8_t i = detail::findSlot(p);
+    if (i < 0) return;
+    detail::slots[i].on = true;
+    detail::refreshPort(p.port());
 }
 
 void PinChange::disable(Pin p) {
     if (!p.valid()) return;
     AtomicBlock lock;
-    volatile uint8_t* m = detail::pcMaskReg(p.port());
-    *m = uint8_t(*m & uint8_t(~p.mask()));
-    if (*m == 0) PCICR = uint8_t(PCICR & uint8_t(~detail::pcieBit(p.port())));
+    const int8_t i = detail::findSlot(p);
+    if (i < 0) return;
+    detail::slots[i].on = false;
+    detail::refreshPort(p.port());
 }
 
 bool PinChange::isAttached(Pin p) {

@@ -258,9 +258,8 @@ enum class uint8_t. Многоисходные операции возвраща
   sizeof → RESOURCES.md §2. Лимит декодеров квадратуры = FN_IRQ_SLOTS/2 (D54).
 - **Инварианты:** INV-05, INV-06 (ISR в .cpp), INV-07, INV-19, DEP-6/7.
 - **Верификация:** HOST (логика пула/уплотнения/refreshPort); HW (PCINT-гонки, INT edge).
-- **Расхождения:** G-4 — enable/disable пишут PCMSK напрямую, минуя пул; последующий
-  refreshPort (при attach/detach) возвращает отключённый пин. Цель: флаг enabled в слоте,
-  учитываемый refreshPort, либо убрать enable/disable как отдельную сущность.
+- **Расхождения:** нет (G-4 закрыт: флаг on в слоте, refreshPort — единственный
+  источник истины; detach пересчитывает маску обоих портов при уплотнении).
 
 ### 2.9 L5.1 — пины / ввод
 
@@ -642,9 +641,7 @@ enum class uint8_t. Многоисходные операции возвраща
 - **Ресурсы:** SPI+D10..D13; вектор SpiStc; SoftSpi sizeof=8. → RESOURCES.md.
 - **Инварианты:** INV-05/06/13/14/21, INV-01 (kDivs).
 - **Верификация:** HW (режимы CPOL/CPHA, делители, SS); HOST (calcDiv границы).
-- **Расхождения:** P0-2 — FN_CLAIM_VECTOR(SpiStc,SPI) падает при дефолте NONE → привести к SPI.
-  G-2 — const DivEntry kDivs[7] в RAM (28 Б) → PROGMEM. G-5 — busy()=isReady&&(SPIF==0) всегда
-  true (после обмена SPIF сброшен чтением SPDR); для синхронного SPI busy()=false.
+- **Расхождения:** нет (kDivs в PROGMEM, busy()=false для синхронного обмена).
 
 #### C-BUS-PACKET — fn::Packet (Packet.h)
 - **Модуль/слой:** bus/Packet.h · L6
@@ -678,8 +675,8 @@ enum class uint8_t. Многоисходные операции возвраща
 - **Ресурсы:** EEPROM 1024 Б (не захватывается); written 4 Б; 0 прочей статики. → RESOURCES.md.
 - **Инварианты:** INV-07/12/18, INV-03.
 - **Верификация:** HW (запись/чтение границ, износ); HOST (validRange арифметика).
-- **Расхождения:** G-3 — AtomicBlock оборачивает весь вызов avr-libc включая busy_wait (~3.4 мс
-  под cli на байт) → UART/millis страдают. Цель: busy_wait вне блокировки, критическое окно узкое.
+- **Расхождения:** нет (G-3 закрыт: busy_wait с разрешёнными прерываниями,
+  под AtomicBlock только окно EEAR/EEDR).
 
 #### C-STORE-EEPROMSTORE — fn::EepromStore<T> (EepromStore.h)
 - **Модуль/слой:** store/EepromStore.h · L6.1

@@ -121,14 +121,14 @@ constexpr uint32_t TicksPerUs = F_CPU / 1000000UL;
 // Возвращает число тактов таймера (1..maxCount), 0 — не влезает ни при каком.
 // out получает найденный делитель; при неудаче — Div1024.
 inline uint32_t bestClock(uint32_t cycles, uint32_t maxCount, Clock& out) {
-    static const Clock kClocks[5] = {
-        Clock::Div1, Clock::Div8, Clock::Div64, Clock::Div256, Clock::Div1024
-    };
-    for (uint8_t i = 0; i < 5; ++i) {
-        const uint16_t d = prescaleOf(kClocks[i]);
+    // Перебор кодов CS 1..5 без таблицы: prescaleOf — constexpr-цепочка,
+    // компилятор разворачивает её в константы (INV-01, таблиц в RAM нет).
+    for (uint8_t cs = 1; cs <= 5; ++cs) {
+        const Clock c = static_cast<Clock>(cs);
+        const uint16_t d = prescaleOf(c);
         const uint32_t t = cycles / d;
         if (t >= 1 && t <= maxCount) {
-            out = kClocks[i];
+            out = c;
             return t;
         }
     }

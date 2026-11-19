@@ -39,6 +39,7 @@
 #include "../timer/Tick.h"
 
 #include <avr/io.h>
+#include <avr/pgmspace.h>
 
 FN_CLAIM_VECTOR(SpiStc, FN_OWNER_SPI);
 
@@ -58,16 +59,15 @@ constexpr uint8_t kMisoPin = 12;   // PB4
 constexpr uint8_t kSckPin  = 13;   // PB5
 constexpr uint8_t kSsPin   = 10;   // PB2
 
-// Таблица делителей: индекс = (SPI2X << 2) | SPR1:0.
-// Значения подобраны так, чтобы перебор шёл от быстрого к медленному.
+// Таблица делителей во flash (INV-01, D11). Индекс = порядок перебора
+// от максимальной частоты к минимальной: 2/4/8/16/32/64/128.
 struct DivEntry {
     uint16_t div;
     uint8_t  spr;      // SPR1:0
     uint8_t  spi2x;    // бит SPI2X
 };
 
-// Перебор от максимальной частоты к минимальной.
-const DivEntry kDivs[7] = {
+const DivEntry kDivs[7] PROGMEM = {
     {  2, 0, 1 },
     {  4, 0, 0 },
     {  8, 1, 1 },
@@ -96,10 +96,11 @@ inline bool waitSpif() {
 bool calcDiv(uint32_t hz, uint8_t& sprOut, uint8_t& x2Out, uint32_t& realOut) {
     if (hz == 0) return false;
     for (uint8_t i = 0; i < 7; ++i) {
-        const uint32_t f = F_CPU / kDivs[i].div;
+        const uint16_t dv = pgm_read_word(&kDivs[i].div);
+        const uint32_t f = F_CPU / dv;
         if (f <= hz) {
-            sprOut = kDivs[i].spr;
-            x2Out = kDivs[i].spi2x;
+            sprOut  = pgm_read_byte(&kDivs[i].spr);
+            x2Out   = pgm_read_byte(&kDivs[i].spi2x);
             realOut = f;
             return true;
         }
@@ -269,9 +270,11 @@ int32_t Spi::transfer16(uint16_t v, bool msbFirst) {
 // ============================ контракт: вырожденные ========================
 uint16_t Spi::available() { return 0; }          // буфера нет
 Result Spi::flush(uint32_t) { return Result::Ok; }
-bool Spi::busy() {
-    return spi_detail::isReady && ((SPSR & (1u << SPIF)) == 0);
-}
+
+// Обмен синхронный (transferByte ждёт SPIF и читает SPDR). Асинхронного
+// состояния "в процессе" снаружи не существует: busy() всегда false.
+// Прежняя формула (SPIF==0) давала true и в простое, и после обмена (G-5).
+bool Spi::busy() { return false; }
 
 Result Spi::lastError() { return spi_detail::last; }
 

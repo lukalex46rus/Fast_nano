@@ -141,18 +141,18 @@
 
 ## Backlog расхождений код↔контракт (из аудита)
 
-| ID | Где | Что | Цель |
-|---|---|---|---|
-| G-1 | timer/Tick.h | sizeof(Stopwatch)=9, заявлено 8 | packing до 8 либо исправить RESOURCES.md |
-| G-2 | bus/Spi.cpp, timer/Timer2.cpp, timer/TimerCommon.h | const-таблицы в SRAM (28+7+5 Б) | PROGMEM / арифметика (R1) |
-| G-3 | store/Eeprom.cpp | AtomicBlock держит cli ~3.4 мс/байт | busy_wait вне блокировки |
-| G-4 | pin/Irq.cpp | enable/disable минуют пул → refreshPort откатывает | флаг enabled в слоте |
-| G-5 | bus/Spi.cpp | busy() всегда true | false для синхронного SPI |
-| G-6 | core/Registers.h | FastPin sbi/cbi не гарантирован | FN_INLINE sfr + objdump |
-| G-7 | timer/Timer1.cpp | setMode комментарий врёт про CS | поправить док/поведение |
-| G-8 | peripheral/Adc.cpp | Vcc-формула 1023 vs 1024 | 1024 |
-| G-9 | display/Lcd1602.h ↔ lcd/Utf8Lcd1602.h | цикл include | разорвать (вынести общий тип)
-| G-10 | motor/TMC2209.h/.cpp | BusError не определён; Uart::read()/flush() без аргументов; Bus.h отсутствует | миграция на fn::Result + BusContract (этап 3, L10) |
-| G-11 | device/MCP23017.cpp:76,90; display/Lcd1602I2c.cpp:18 | I2c::write(byte) — сигнатура write(ptr,len) | миграция на текущий API шин (этап 3, L9/L10) |
-| G-12 | logic/Button.h, logic/Encoder.h, input/Keys.h, input/Keypad4x4*.h | Pin<N> вместо BoardPin<N>; PinRef(n,uint8_t) вместо Mode; Timer2::Mode::CTC/Clock | миграция на актуальный API pin/timer (этап 3, L7/L10) |
-| G-13 | math/MathUtils.h, math/Mapping.h | constexpr-функции с локальными переменными (C++11 запрещает) | проверить остальные constexpr на соответствие C++11 |
+| Статус | ID | Где | Что | Цель |
+|---|---|---|---|---|
+| ✅ | G-1 | timer/Tick.h | sizeof(Stopwatch)=9, заявлено 8 | packing до 8 либо исправить RESOURCES.md |
+| ✅ | G-2 | bus/Spi.cpp, timer/Timer2.cpp, timer/TimerCommon.h | const-таблицы в SRAM (28+7+5 Б) | PROGMEM / арифметика (R1) |
+| ✅ | G-3 | store/Eeprom.cpp | AtomicBlock держит cli ~3.4 мс/байт | busy_wait вне блокировки |
+| ✅ | G-4 | pin/Irq.cpp | enable/disable минуют пул → refreshPort откатывает | флаг enabled в слоте |
+| ✅ | G-5 | bus/Spi.cpp | busy() всегда true | false для синхронного SPI |
+|  | G-6 | core/Registers.h | FastPin sbi/cbi не гарантирован | FN_INLINE sfr + objdump |
+|  | G-7 | timer/Timer1.cpp | setMode комментарий врёт про CS | поправить док/поведение |
+|  | G-8 | peripheral/Adc.cpp | Vcc-формула 1023 vs 1024 | 1024 |
+|  | G-9 | display/Lcd1602.h ↔ lcd/Utf8Lcd1602.h | цикл include | разорвать (вынести общий тип)
+|  | G-10 | motor/TMC2209.h/.cpp | BusError не определён; Uart::read()/flush() без аргументов; Bus.h отсутствует | миграция на fn::Result + BusContract (этап 3, L10) |
+|  | G-11 | device/MCP23017.cpp:76,90; display/Lcd1602I2c.cpp:18 | I2c::write(byte) — сигнатура write(ptr,len) | миграция на текущий API шин (этап 3, L9/L10) |
+|  | G-12 | logic/Button.h, logic/Encoder.h, input/Keys.h, input/Keypad4x4*.h | Pin<N> вместо BoardPin<N>; PinRef(n,uint8_t) вместо Mode; Timer2::Mode::CTC/Clock | миграция на актуальный API pin/timer (этап 3, L7/L10) |
+|  | G-13 | math/MathUtils.h, math/Mapping.h | constexpr-функции с локальными переменными (C++11 запрещает) | проверить остальные constexpr на соответствие C++11 |
