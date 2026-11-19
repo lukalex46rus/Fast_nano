@@ -45,6 +45,7 @@
 | D10 | две реализации Progmem, ambiguous Print | Progmem+PgmUtils слиты | нет переполнения буфера | C-CORE-PROGMEM |
 | D20 | таблицы CRC ≈ 4× flash | CRC побитовый без таблиц | 176 Б flash, пакеты ≤64 Б | INV-01 |
 | D83 | reverseBitOrder четырьмя записями | XOR масок при различии бит | меньше команд | C-CORE-BITS |
+| D86 | const-таблицы делителей лежали в .data (40 Б SRAM) | SPI: PROGMEM+pgm_read; таймеры: перебор CS через constexpr prescaleOf без массива | 0 байт SRAM на таблицы | INV-01 |
 
 ## Группа: прерывания и ресурсы
 
@@ -56,6 +57,7 @@
 | D22 | INT0/INT1 ISR уже в WInterrupts.c | через attachInterrupt ядра | свои ISR невозможны | RESOURCES §3 |
 | D52 | реестр декодеров: 9 Б SRAM + обход в ISR | ctx=this в диспетчере | реестр удалён | Quadrature |
 | D54 | два лимита на один ресурс расходились | лимит декодеров = FN_IRQ_SLOTS/2 | один источник лимита | RESOURCES §2 |
+| D88 | enable/disable писали PCMSK мимо пула, refreshPort откатывал | флаг on в слоте, refreshPort учитывает его; detach обновляет оба порта | кэш и железо не расходятся | C-PIN-IRQ |
 
 ## Группа: таймеры и время
 
@@ -77,6 +79,7 @@
 | D61 | PhaseCorrect период = 2·TOP | periodTicks 510/1022/2046, не TOP+1 | корректная частота | INV-15 |
 | D62 | нужен рантаймовый арбитраж Timer1 | Timer1::acquire(Client), 1 байт | advisory-арбитраж | P0-4 |
 | D69 | реестр внутри Timer1 дублировался бы | tmr::acquire — общий реестр в TimerCommon.cpp, 3 Б; Timer1::acquire делегирует | ✅ реализован (P0-4); гейт F_USE_TIMER_ARBITER | C-TIMER-T1 |
+| D89 | sizeof(Stopwatch)=9 при заявленных 8 | флаг работы в старшем бите аккумулятора | 8 Б, диапазон 35.8 мин документирован | RESOURCES §2 |
 
 ## Группа: ШИМ
 
@@ -113,21 +116,13 @@
 | D75 | порядок байт ≠ порядок битов | transfer16(v, highByteFirst) | явный порядок | Spi |
 
 
-
-| D86 | const-таблицы делителей лежали в .data (40 Б SRAM) | SPI: PROGMEM+pgm_read; таймеры: перебор CS через constexpr prescaleOf без массива | 0 байт SRAM на таблицы | INV-01 |
-| D87 | AtomicBlock вокруг eeprom_write_byte держал cli ~3.4 мс/байт | busy_wait вне блокировки, под AtomicBlock только окно EEAR/EEDR | UART/millis не страдают при блочном update | C-STORE-EEPROM |
-| D88 | enable/disable писали PCMSK мимо пула, refreshPort откатывал | флаг on в слоте, refreshPort учитывает его; detach обновляет оба порта | кэш и железо не расходятся | C-PIN-IRQ |
-| D89 | sizeof(Stopwatch)=9 при заявленных 8 | флаг работы в старшем бите аккумулятора | 8 Б, диапазон 35.8 мин документирован | RESOURCES §2 |
-| D90 | Spi::busy()=(SPIF==0) давал true в простое | обмен синхронный → busy()=false | корректная семантика контракта | C-BUS-SPI |
-
-
-
 ## Группа: хранилище
 
 | ID | Контекст | Решение | Следствие | Ссылки |
 |---|---|---|---|---|
 | D43 | EEAR 10-бит: addr 2000 писал в 976; две sbi на пределе окна | EEPROM границы + avr-libc тайминг | корректность | Eeprom, G-3 |
 | D44 | tick() гонял CRC по всему T (~200 мкс) | dirty-флаг, CRC только в commit() | скорость | EepromStore |
+| D87 | AtomicBlock вокруг eeprom_write_byte держал cli ~3.4 мс/байт | busy_wait вне блокировки, под AtomicBlock только окно EEAR/EEDR | UART/millis не страдают при блочном update | C-STORE-EEPROM |
 
 ## Группа: питание/аналог
 
@@ -175,5 +170,5 @@
 | Реестры декодеров/каналов в модулях | SRAM + обход в ISR; заменены ctx=this |
 
 ## Требуют пересмотра (⚠️)
-- D32: номер бита WGM02/22 в комментарии Traits0 ошибочен (бит 3, не 4) → P0-3.
-- D69: tmr::acquire описан, но не реализован → P0-4.
+Нет открытых пунктов. D32 закрыт P0-3 (номер бита WGM02/22 исправлен),
+D69 закрыт P0-4 (tmr::acquire реализован в TimerCommon.cpp).
