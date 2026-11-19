@@ -163,5 +163,5 @@ private:
 
     uint32_t _start;
     uint32_t _acc;
-    
-};  // namespace fn
+};    
+}  // namespace fn
