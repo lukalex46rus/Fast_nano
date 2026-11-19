@@ -147,6 +147,14 @@ pulse_detail::last как uint32_t и Result (P0-23).
 с первым include = Config.h.
 Известные нарушения (закрыты P0-21/P0-22): Config.h без stddef.h, I2c.cpp без Registers.h.
 
+### INV-24 (новый). Параметр не затеняет имя функции библиотеки
+Утверждение: имя параметра/локальной переменной не совпадает с именем функции,
+вызываемой в том же теле (delayUs, delayMs, millis, micros, elapsed, expired).
+Иначе qualified-id разрешается относительно параметра → fn::fn::X.
+Проверка: GREP `(delayUs|delayMs|millis|micros)\s*\)` в списке параметров при
+наличии вызова того же имени в теле; REVIEW.
+Известные нарушения (закрыты G-14…G-16): ShiftRegister sendByte/send/readByte.
+
 ---
 
 ## Реестр проверок (для линтера этапа 4.1)

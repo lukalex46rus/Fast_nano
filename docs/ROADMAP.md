@@ -156,3 +156,4 @@
 |  | G-11 | device/MCP23017.cpp:76,90; display/Lcd1602I2c.cpp:18 | I2c::write(byte) — сигнатура write(ptr,len) | миграция на текущий API шин (этап 3, L9/L10) |
 |  | G-12 | logic/Button.h, logic/Encoder.h, input/Keys.h, input/Keypad4x4*.h | Pin<N> вместо BoardPin<N>; PinRef(n,uint8_t) вместо Mode; Timer2::Mode::CTC/Clock | миграция на актуальный API pin/timer (этап 3, L7/L10) |
 |  | G-13 | math/MathUtils.h, math/Mapping.h | constexpr-функции с локальными переменными (C++11 запрещает) | проверить остальные constexpr на соответствие C++11 |
+|  | G-14 | device/ShiftRegister.h | параметр delayUs затеняет fn::delayUs → fn::fn::delayUs | параметр dlyUs + вызов ::fn::delayUs |
